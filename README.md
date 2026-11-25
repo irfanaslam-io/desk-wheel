@@ -253,8 +253,8 @@ Updates are safe by design: the update feed must be signed with Desk Wheel's pri
 **Each release:** set `<Version>` in `src/Wheel.App/Wheel.App.csproj`, commit, then tag and push:
 
 ```bash
-git tag -a v0.18.0 -m "What's new: …"   # the message becomes the release notes shown in the app
-git push origin v0.18.0
+git tag -a v0.1.0 -m "What's new: …"   # the message becomes the release notes shown in the app
+git push origin v0.1.0
 ```
 
 GitHub Actions builds the Mac DMG and both Windows installers, writes and signs `update.json`, and publishes them as a release. Installed copies pick it up within about 12 hours.

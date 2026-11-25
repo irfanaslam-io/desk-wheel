@@ -3,7 +3,7 @@ name: build
 on:
   push:
     branches: ['**']
-    tags: ['v*']          # a version tag (v0.18.0) also publishes the release and the update feed
+    tags: ['v*']          # a version tag (v0.1.0) also publishes the release and the update feed
   pull_request:
   workflow_dispatch:
 

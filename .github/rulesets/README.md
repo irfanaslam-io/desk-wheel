@@ -6,6 +6,6 @@ GitHub doesn't apply these files automatically; import them once:
 | File | Protects | What it blocks |
 | --- | --- | --- |
 | `protect-main.json` | the default branch (`main`) | deleting it and force-pushing over its history |
-| `protect-release-tags.json` | release tags (`v0.18.0`, …) | deleting or moving a published version's tag |
+| `protect-release-tags.json` | release tags (`v0.1.0`, …) | deleting or moving a published version's tag |
 
 Normal pushes and new tags still work. Repository admins (you) can bypass both in an emergency.

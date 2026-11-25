@@ -52,7 +52,7 @@ body:
     attributes:
       label: Desk Wheel version
       description: Settings › Updates shows it.
-      placeholder: "0.18.0"
+      placeholder: "0.1.0"
     validations:
       required: true
   - type: dropdown

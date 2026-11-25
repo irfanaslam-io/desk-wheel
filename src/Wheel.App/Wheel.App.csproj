@@ -12,7 +12,7 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <!-- Lets the Windows "Send to" shortcut use COM late binding. -->
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
-    <Version>0.18.0</Version>
+    <Version>0.1.0</Version>
     <Product>Desk Wheel</Product>
     <ApplicationIcon>..\..\platform\icons\AppIcon.ico</ApplicationIcon>
     <Company>irfanaslam.io</Company>
