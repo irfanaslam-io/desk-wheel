@@ -133,6 +133,7 @@ internal sealed class SettingsWindow : Window
     private void ShowSection(int index)
     {
         var (name, _, build) = _sections[index];
+        Usage.Screen("settings-" + name);
         // One readable column: as wide as the window allows, up to 720.
         var column = new StackPanel { Spacing = 18, Children = { Ui.Title(name), build() } };
         var grid = new Grid { Margin = new Thickness(32, 26, 32, 32) };

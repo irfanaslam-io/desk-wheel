@@ -258,6 +258,7 @@ internal static class Ui
     {
         window.Title = title;
         if (AppIcons.Window is { } icon) window.Icon = icon;
+        if (window is not PromptWindow and not ConsentWindow) Usage.Screen(window.GetType().Name);
         window.Background = Canvas;
         window.Foreground = Text;
         window.FontSize = BodySize;

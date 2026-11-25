@@ -293,6 +293,7 @@ internal sealed class App : Application, INotifier, IScreenToolHost
     /// <summary>Area screenshot marked up in place (<see cref="SnipWindow"/>), then saved, copied, pinned or edited.</summary>
     private async Task SnipAsync(string path)
     {
+        Usage.Screen("snip");
         var anyWindow = (Window?)_button ?? (_screensProbe ??= new Window());
         if (await Tools.FreezeScreenAsync(anyWindow) is not { } frozen) return;
         SnipResult? result;
@@ -341,6 +342,7 @@ internal sealed class App : Application, INotifier, IScreenToolHost
         Log.Trace($"  Saved {path}");
         AppHistory.Record("Screenshot", path);
         var preview = new PreviewWindow(path);
+        Usage.Screen("preview-card");
         preview.CopyRequested += async () =>
         {
             try
@@ -412,6 +414,7 @@ internal sealed class App : Application, INotifier, IScreenToolHost
     /// <summary>Clipboard history, near the pointer (button right-click, ⌥⇧V / Alt+Shift+V, the wheel, the menu).</summary>
     private void OpenClipboard()
     {
+        Usage.Screen("clipboard");
         _wheel?.CloseWheel();
         if (_clipboardWindow is { } open)
         {
@@ -620,6 +623,7 @@ internal sealed class App : Application, INotifier, IScreenToolHost
 
     private void OpenWheel(WheelWindow wheel, Action<WheelWindow> show)
     {
+        Usage.Screen("wheel-" + wheel.Mode);
         wheel.Pinned = () => _settings.PinnedOptions;
         wheel.TogglePin = id =>
         {

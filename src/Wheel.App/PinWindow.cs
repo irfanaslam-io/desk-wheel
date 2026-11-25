@@ -19,6 +19,7 @@ internal sealed class PinWindow : Window
 
     public PinWindow(string path)
     {
+        Usage.Screen("pin");
         SystemDecorations = SystemDecorations.None;
         Topmost = true;
         ShowInTaskbar = false;

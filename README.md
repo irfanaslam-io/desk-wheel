@@ -239,7 +239,7 @@ Updates are safe by design: the update feed must be signed with Desk Wheel's pri
 1. Installed apps read `https://github.com/irfanaslam-io/desk-wheel/releases/latest/download/update.json`: each release is published in this repository, with no extra repo or token.
 2. In this repo's **Settings › Secrets and variables › Actions**, add:
    - `UPDATE_SIGNING_KEY`: the private key (the whole `update-signing-key.pem`, including the BEGIN/END lines). Keep a backup somewhere safe: without it, future updates can't be signed.
-   - `GA_MEASUREMENT_ID` and `GA_API_SECRET` (optional): see Privacy below.
+   - `GA_API_SECRET` (optional, turns on usage statistics): see Privacy below.
 
 **Each release:** set `<Version>` in `src/Wheel.App/Wheel.App.csproj`, commit, then tag and push:
 
@@ -256,12 +256,25 @@ To use a different address for the feed, build with `WHEEL_UPDATE_FEED=https://�
 
 Desk Wheel works fully offline. Optionally, and only if the person says yes when asked (or later in Settings › Privacy), it sends **anonymous usage counts** to Google Analytics 4:
 
-- **Sent:** the tool's code (e.g. `img.to-png`, `pdf.compress`), roughly how many files ("2-5"), the screenshot type, the app version, Mac or Windows, and a random id made on the computer.
+- **Sent:** the tool's code (e.g. `img.to-png`, `pdf.compress`), which Desk Wheel screens are opened (e.g. `settings-updates`, `clipboard`), roughly how many files ("2-5"), the screenshot type, the app version, Mac or Windows, and a random id made on the computer.
 - **Never sent:** files, file names, folders, screenshots, clipboard contents or anything typed. Every value is checked against a strict pattern (short lowercase codes and numbers only) before it's even queued, so a name or path can't slip through by mistake.
 
 Events wait in a small file and go out in batches, so it costs nothing while offline. Turning statistics off deletes anything not yet sent.
 
-To switch it on, create a GA4 property with a **web data stream**, then under the stream's *Measurement Protocol API secrets* create a secret. Add `GA_MEASUREMENT_ID` (`G-XXXXXXX`) and `GA_API_SECRET` as Actions secrets (or set `WHEEL_GA_MEASUREMENT_ID` and `WHEEL_GA_API_SECRET` when building locally). Without them, no statistics code runs and nobody is asked. In GA4, the events are `app_start`, `tool_used` (parameters `tool`, `files`), `screenshot` (`kind`) and `update_started` (`to_version`); register `tool` and `kind` as custom dimensions to see them in reports.
+Desk Wheel reports into irfanaslam.io's Google Analytics property (`G-9X34YKZZL5`, built in by default), next to the website, so there is no separate analytics account. To switch it on, open GA4 › Admin › Data streams › the irfanaslam.io stream › *Measurement Protocol API secrets*, create a secret named "Desk Wheel", and add it as the `GA_API_SECRET` Actions secret (or set `WHEEL_GA_API_SECRET` when building locally; `WHEEL_GA_MEASUREMENT_ID` / the `GA_MEASUREMENT_ID` secret can point it at another property). Without the secret, no statistics code runs and nobody is asked.
+
+Every app event starts with `dw_` and carries `app_name = desk-wheel`, so the app and the website never mix in reports:
+
+| Event | Parameters | When |
+| --- | --- | --- |
+| `dw_app_start` | | the app starts |
+| `dw_screen` | `screen_name` (`settings-general`, `settings-updates`, `clipboard`, `history`, `editor`, `wheel-convert`, `wheel-tools`, `snip`, `pin`, `preview-card`…) | a Desk Wheel screen opens |
+| `dw_tool_used` | `tool`, `files` | a conversion or tool runs |
+| `dw_screenshot` | `kind` | a screenshot is taken |
+| `dw_snip` | `action` | a snip is copied, saved, pinned… |
+| `dw_update_started` | `to_version` | an in-app update starts |
+
+Every event also has `app_version`, `os` and `arch`. In GA4 › Admin › Custom definitions, register `app_name`, `screen_name`, `tool` and `kind` as event-scoped custom dimensions; then in Explore filter on *Event name starts with `dw_`* (or `app_name = desk-wheel`). To keep app events out of the website's own reports, add a comparison or filter excluding `app_name = desk-wheel`.
 
 ## Build and run on Windows
 

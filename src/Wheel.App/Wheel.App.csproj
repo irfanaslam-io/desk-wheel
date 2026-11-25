@@ -63,6 +63,8 @@
   </ItemGroup>
   <!-- Filled in at build time (environment variables or -p:), so no keys are kept in the source. Empty = off. -->
   <PropertyGroup>
+    <!-- irfanaslam.io's Google Analytics 4 property (a public id). Statistics stay off until the API secret is set too. -->
+    <WHEEL_GA_MEASUREMENT_ID Condition="'$(WHEEL_GA_MEASUREMENT_ID)' == ''">G-9X34YKZZL5</WHEEL_GA_MEASUREMENT_ID>
     <WHEEL_UPDATE_FEED Condition="'$(WHEEL_UPDATE_FEED)' == ''">https://github.com/irfanaslam-io/desk-wheel/releases/latest/download/update.json</WHEEL_UPDATE_FEED>
   </PropertyGroup>
   <ItemGroup>

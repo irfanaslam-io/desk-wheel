@@ -47,7 +47,7 @@ internal sealed class ConsentWindow : Window
                     Children =
                     {
                         Ui.Label("What's sent"),
-                        Ui.Caption("Tool names (like \"PNG\" or \"Compress PDF\"), how many files (roughly), the app version and Mac or Windows."),
+                        Ui.Caption("Tool names (like \"PNG\" or \"Compress PDF\"), which Desk Wheel screens are opened (like \"Settings\"), how many files (roughly), the app version and Mac or Windows."),
                         Ui.Label("Never sent"),
                         Ui.Caption("Your files, file names, folders, screenshots, clipboard or anything you type. Conversions always happen on your computer."),
                     },

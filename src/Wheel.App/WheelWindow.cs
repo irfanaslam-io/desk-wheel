@@ -57,6 +57,9 @@ internal sealed class WheelWindow : Window
     private IReadOnlyList<string>? _batchFor;          // the selection _batch was worked out for
     private FolderContents.Batch? _batch;              // a folder selection's files, used by Convert and Tools
     private WheelMode _mode;
+
+    /// <summary>The wheel showing now (Convert, Tools, Capture…).</summary>
+    public WheelMode Mode => _mode;
     private int? _hover;
     private bool _nonFileDrag;
     private DateTime? _buttonUpAt;
