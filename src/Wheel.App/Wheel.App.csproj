@@ -63,7 +63,7 @@
   </ItemGroup>
   <!-- Filled in at build time (environment variables or -p:), so no keys are kept in the source. Empty = off. -->
   <PropertyGroup>
-    <WHEEL_UPDATE_FEED Condition="'$(WHEEL_UPDATE_FEED)' == ''">https://github.com/irfanaslam-io/desk-wheel-releases/releases/latest/download/update.json</WHEEL_UPDATE_FEED>
+    <WHEEL_UPDATE_FEED Condition="'$(WHEEL_UPDATE_FEED)' == ''">https://github.com/irfanaslam-io/desk-wheel/releases/latest/download/update.json</WHEEL_UPDATE_FEED>
   </PropertyGroup>
   <ItemGroup>
     <AssemblyMetadata Include="GaMeasurementId" Value="$(WHEEL_GA_MEASUREMENT_ID)" />

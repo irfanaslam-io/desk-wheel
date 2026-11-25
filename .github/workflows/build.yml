@@ -7,7 +7,7 @@ on:
   pull_request:
   workflow_dispatch:
 
-# Least privilege: the jobs only read the code (publishing uses its own RELEASES_TOKEN).
+# Least privilege: jobs only read the code; the release job alone may publish releases.
 permissions:
   contents: read
 
@@ -115,8 +115,10 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [mac, windows]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # to create the GitHub release in this repository
     env:
-      RELEASES_REPO: irfanaslam-io/desk-wheel-releases
+      RELEASES_REPO: ${{ github.repository }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -153,8 +155,7 @@ jobs:
           rm -f "$RUNNER_TEMP/key.pem"
       - name: Publish the release
         env:
-          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          [ -n "$GH_TOKEN" ] || { echo "Add the RELEASES_TOKEN secret (README › Releases)"; exit 1; }
           gh release create "v$VERSION" -R "$RELEASES_REPO" --title "Desk Wheel $VERSION" \
             --notes-file notes.txt out/*.dmg out/*-setup.exe out/update.json out/update.json.sig

@@ -236,10 +236,9 @@ Updates are safe by design: the update feed must be signed with Desk Wheel's pri
 
 **One-time setup:**
 
-1. Create a **public** repo `irfanaslam-io/desk-wheel-releases` (empty). Installed apps read `https://github.com/irfanaslam-io/desk-wheel-releases/releases/latest/download/update.json`.
+1. Installed apps read `https://github.com/irfanaslam-io/desk-wheel/releases/latest/download/update.json`: each release is published in this repository, with no extra repo or token.
 2. In this repo's **Settings › Secrets and variables › Actions**, add:
    - `UPDATE_SIGNING_KEY`: the private key (the whole `update-signing-key.pem`, including the BEGIN/END lines). Keep a backup somewhere safe: without it, future updates can't be signed.
-   - `RELEASES_TOKEN`: a fine-grained personal access token with **Contents: Read and write** on `desk-wheel-releases` only.
    - `GA_MEASUREMENT_ID` and `GA_API_SECRET` (optional): see Privacy below.
 
 **Each release:** set `<Version>` in `src/Wheel.App/Wheel.App.csproj`, commit, then tag and push:
