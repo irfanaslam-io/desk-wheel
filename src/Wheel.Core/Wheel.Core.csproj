@@ -13,7 +13,7 @@
     <!-- PDF passwords and compression, in-process (MIT): nothing extra to install. -->
     <PackageReference Include="PDFsharp" Version="6.2.4" />
     <!-- PDFsharp's signing dependency, pinned to the release with the security fix. -->
-    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.15" />
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="11.0.0" />
   </ItemGroup>
 
 </Project>
