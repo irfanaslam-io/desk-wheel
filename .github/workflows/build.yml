@@ -32,8 +32,7 @@ jobs:
         run: dotnet run --project tests/Wheel.Core.Tests -c Release
 
   mac:
-    # macOS minutes cost 10x: build the Mac app only for releases (tags) or when started by hand.
-    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    # Public repo: macOS runners are free, so the Mac app builds on every push like Windows.
     runs-on: macos-latest   # Apple silicon
     needs: core-tests
     steps:
