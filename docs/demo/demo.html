@@ -1,0 +1,193 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:900px;height:540px;overflow:hidden;background:#000;font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+#stage{position:relative;width:900px;height:540px;overflow:hidden;
+  background:radial-gradient(120% 90% at 20% 10%,#2b3a63 0%,#18213b 45%,#0d1222 100%)}
+.abs{position:absolute}
+.icon{position:absolute;width:86px;text-align:center;color:#fff;font-size:11.5px;text-shadow:0 1px 2px #000}
+.icon .img{width:52px;height:52px;margin:0 auto 6px}
+#taskbar{left:0;top:500px;width:900px;height:40px;background:rgba(20,24,36,.92);border-top:1px solid rgba(255,255,255,.08)}
+.tb{position:absolute;top:8px;width:24px;height:24px;border-radius:6px}
+#clock{right:14px;top:7px;color:#dfe3ea;font-size:11px;text-align:right;line-height:13px}
+#win{left:168px;top:64px;width:480px;height:330px;background:#f6f7f9;border-radius:10px;box-shadow:0 18px 40px rgba(0,0,0,.45);overflow:hidden}
+#win .bar{height:34px;background:#fff;border-bottom:1px solid #e3e6eb;display:flex;align-items:center;padding:0 14px;font-size:12px;color:#333;font-weight:600}
+#win .dots{margin-left:auto;display:flex;gap:16px;color:#777;font-weight:400}
+#caption{left:50%;top:14px;transform:translateX(-50%);background:rgba(12,14,20,.86);color:#fff;font-size:15px;font-weight:600;
+  padding:9px 16px;border-radius:999px;white-space:nowrap;box-shadow:0 6px 18px rgba(0,0,0,.4);display:flex;align-items:center;gap:10px}
+#caption .n{width:22px;height:22px;border-radius:11px;background:#E8622C;display:inline-flex;align-items:center;justify-content:center;font-size:12.5px}
+#toast{width:300px;background:rgba(27,28,32,.97);border-radius:10px;border:1px solid #2E3037;padding:12px 10px 12px 12px;display:flex;gap:12px;align-items:center;
+  box-shadow:0 10px 28px rgba(0,0,0,.5)}
+#toast .ic{width:30px;height:30px;border-radius:15px;background:rgba(48,164,108,.18);display:flex;align-items:center;justify-content:center;flex:none}
+#toast .t{color:#ECEDEF;font-size:13.5px;font-weight:600}
+#toast .s{color:#A0A4AC;font-size:12px;margin-top:2px}
+#card{width:330px;background:rgba(27,28,32,.97);border-radius:10px;border:1px solid #2E3037;padding:10px;box-shadow:0 10px 28px rgba(0,0,0,.5)}
+#card .btns{display:flex;gap:6px;margin-top:9px}
+#card .b{flex:1;text-align:center;font-size:11.5px;color:#ECEDEF;background:#24262B;border:1px solid #2E3037;border-radius:6px;padding:5px 0}
+#card .b.p{background:#E8622C;border-color:#E8622C;color:#fff}
+#keycap{left:50%;top:440px;transform:translateX(-50%);display:flex;gap:6px;align-items:center;color:#fff;font-size:13px;font-weight:600}
+.kc{background:#f2f3f5;color:#1a1c20;border-radius:6px;padding:5px 10px;box-shadow:0 3px 0 #9aa0a8}
+#endcard{inset:0;background:radial-gradient(100% 80% at 50% 40%,#26304A,#0D1220);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff}
+#endcard img{width:150px;height:150px}
+#endcard h1{font-size:40px;font-weight:700;margin-top:6px;letter-spacing:-.5px}
+#endcard p{font-size:18px;color:#FF9A6E;font-weight:600;margin-top:6px}
+#endcard small{font-size:13px;color:#A0A4AC;margin-top:16px}
+</style></head>
+<body><div id="stage">
+  <!-- an app window on the desktop -->
+  <div id="win" class="abs">
+    <div class="bar">Monthly report — Sales<div class="dots"><span>–</span><span>□</span><span>✕</span></div></div>
+    <div style="padding:18px 22px">
+      <div style="font-size:13px;color:#5A606A">Revenue by month</div>
+      <div style="font-size:24px;font-weight:700;color:#1A1C20;margin-top:2px">$48,200 <span style="font-size:13px;color:#1C7F4F;font-weight:600">▲ 12%</span></div>
+      <svg width="436" height="190" style="margin-top:10px">
+        <g fill="#C9D3E6">
+          <rect x="10" y="110" width="40" height="70" rx="4"/><rect x="70" y="90" width="40" height="90" rx="4"/>
+          <rect x="130" y="100" width="40" height="80" rx="4"/><rect x="190" y="70" width="40" height="110" rx="4"/>
+          <rect x="250" y="80" width="40" height="100" rx="4"/></g>
+        <rect x="310" y="40" width="40" height="140" rx="4" fill="#3D8BFD"/>
+        <rect x="370" y="55" width="40" height="125" rx="4" fill="#C9D3E6"/>
+        <line x1="0" y1="180.5" x2="436" y2="180.5" stroke="#DCDFE4"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- desktop icons -->
+  <div class="icon" style="left:22px;top:28px" id="ic-heic"><svg class="img" viewBox="0 0 52 52"><defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7cc4ff"/><stop offset="1" stop-color="#ffb37a"/></linearGradient></defs><rect x="4" y="6" width="44" height="40" rx="5" fill="url(#sky)" stroke="#fff" stroke-width="2"/><circle cx="36" cy="17" r="5" fill="#fff3b0"/><path d="M6 42 L20 24 L30 34 L36 28 L46 42 Z" fill="#2f7d5b"/></svg>holiday.heic</div>
+  <div class="icon" style="left:22px;top:128px"><svg class="img" viewBox="0 0 52 52"><path d="M10 4 H32 L44 16 V48 H10 Z" fill="#fff"/><path d="M32 4 V16 H44" fill="#e2e2e2"/><rect x="6" y="26" width="30" height="14" rx="3" fill="#E5383B"/><text x="21" y="36.5" font-size="9" font-weight="700" fill="#fff" text-anchor="middle" font-family="Inter">PDF</text></svg>report.pdf</div>
+  <div class="icon" style="left:22px;top:228px;opacity:0" id="ic-jpg"><svg class="img" viewBox="0 0 52 52"><rect x="4" y="6" width="44" height="40" rx="5" fill="url(#sky)" stroke="#fff" stroke-width="2"/><circle cx="36" cy="17" r="5" fill="#fff3b0"/><path d="M6 42 L20 24 L30 34 L36 28 L46 42 Z" fill="#2f7d5b"/></svg>holiday.jpg</div>
+
+  <!-- taskbar (generic) -->
+  <div id="taskbar" class="abs">
+    <div class="tb" style="left:384px;background:#3D8BFD"></div>
+    <div class="tb" style="left:416px;background:#F6C90E"></div>
+    <div class="tb" style="left:448px;background:#2BB673"></div>
+    <div class="tb" style="left:480px;background:#7C5CE0"></div>
+    <div id="clock" class="abs">10:24<br>25/11/2026</div>
+  </div>
+
+  <!-- the floating Desk Wheel button (BubbleWindow: 56 px, ring, inner ring, dot) -->
+  <svg id="bubble" class="abs" width="56" height="56" style="left:836px;top:222px;opacity:.9">
+    <circle cx="28" cy="28" r="25" fill="rgba(28,29,33,.9)" stroke="#E8622C" stroke-width="3"/>
+    <circle cx="28" cy="28" r="12.5" fill="none" stroke="#E8622C" stroke-width="5" opacity=".85"/>
+    <circle cx="28" cy="28" r="7" fill="#E8622C"/>
+  </svg>
+
+  <!-- screenshot overlay -->
+  <svg id="snip" class="abs" width="900" height="540" style="left:0;top:0;display:none">
+    <defs><marker id="ah" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#E5383B"/></marker></defs>
+    <path id="dim" fill="rgba(0,0,0,.47)" fill-rule="evenodd"/>
+    <rect id="selb" fill="none" stroke="#E8622C" stroke-width="1.5"/>
+    <g id="marks"></g>
+  </svg>
+  <div id="toolbar" class="abs" style="display:none"></div>
+
+  <svg id="wheel" class="abs" width="380" height="380" style="display:none"></svg>
+  <div id="toast" class="abs" style="display:none"></div>
+  <div id="card" class="abs" style="display:none"></div>
+  <div id="keycap" class="abs" style="display:none"><span class="kc">Ctrl</span>+<span class="kc">C</span></div>
+  <div id="ghost" class="abs" style="display:none;opacity:.75;width:52px;height:52px"></div>
+  <svg id="cursor" class="abs" width="24" height="28"></svg>
+  <div id="caption" class="abs"></div>
+  <div id="endcard" class="abs" style="display:none"><img src="../../platform/icons/AppIcon.svg"><h1>Desk Wheel</h1><p>Drop it. Turn it. Done.</p><small>Free · Offline · Windows and macOS · irfanaslam.io</small></div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const C={x:710,y:250}, IN=74, OUT=176, LAB=126;
+const OPTS={
+ convert:{name:'Convert',accent:'#E8622C',labels:['PNG','JPG','WebP','AVIF','ICO','TIFF','GIF','BMP'],
+   hints:['Convert to PNG (lossless)','Convert to JPG (quality 90)','Convert to WebP (quality 85)','Convert to AVIF','Convert to icon (256 px)','Convert to TIFF','Convert to GIF','Convert to BMP'],
+   idle:'holiday.heic\nDrop on a segment'},
+ capture:{name:'Screenshot',accent:'#3D8BFD',labels:['Area','Window','Full','Text','Clipboard','Record','Colour','More ›'],
+   hints:['Drag over part of the screen','Click a window to capture it','Capture the whole screen','Drag over any text on screen to copy it','Everything you copied recently','Record part of the screen as a video (MP4)','Click anywhere on screen to copy its colour','More options'],
+   idle:'Centre: next wheel\nRight-click: pin'}};
+const CYCLE=['#3D8BFD','#E8622C','#1F9E8F','#7C5CE0'];
+const pol=(r,d)=>[190+r*Math.cos(d*Math.PI/180),190+r*Math.sin(d*Math.PI/180)];
+function sector(i,n){const s=360/n,a0=-90-s/2+i*s,a1=a0+s;const [x0,y0]=pol(IN,a0),[x1,y1]=pol(OUT,a0),[x2,y2]=pol(OUT,a1),[x3,y3]=pol(IN,a1);
+ return `M${x0},${y0} L${x1},${y1} A${OUT},${OUT} 0 0 1 ${x2},${y2} L${x3},${y3} A${IN},${IN} 0 0 0 ${x0},${y0} Z`;}
+function hit(px,py){const dx=px-C.x,dy=py-C.y,r=Math.hypot(dx,dy);if(r<IN||r>OUT+4)return null;
+ let a=Math.atan2(dy,dx)*180/Math.PI+90+22.5;a=((a%360)+360)%360;return Math.floor(a/45)%8;}
+function wheelSvg(mode,hover,scale){const o=OPTS[mode];let s=`<g transform="translate(190 190) scale(${scale}) translate(-190 -190)">`;
+ for(let i=0;i<8;i++){s+=`<path d="${sector(i,8)}" fill="${i===hover?o.accent:'#222327'}" stroke="rgba(255,255,255,.25)" stroke-width="1"/>`;}
+ for(let i=0;i<8;i++){const [x,y]=pol(LAB,-90+i*45);s+=`<text x="${x}" y="${y+5}" fill="#fff" font-size="15" font-weight="600" text-anchor="middle">${o.labels[i]}</text>`;}
+ s+=`<circle cx="190" cy="190" r="${IN-6}" fill="rgba(23,24,27,.97)" stroke="${o.accent}" stroke-width="2"/>`;
+ s+=`<text x="190" y="161" fill="${o.accent}" font-size="15" font-weight="600" text-anchor="middle">${o.name}</text>`;
+ const hint=(hover==null?o.idle:o.hints[hover]);const lines=wrap(hint,17).slice(0,3);
+ lines.forEach((l,k)=>s+=`<text x="190" y="${184+k*14}" fill="rgba(255,255,255,.69)" font-size="11.5" text-anchor="middle">${l}</text>`);
+ const mi=mode==='capture'?0:1;CYCLE.forEach((c,k)=>{const x=190-((4*7+3*7)/2)+3.5+k*14;s+=k===mi?`<circle cx="${x}" cy="${229.5}" r="3.5" fill="${c}"/>`:`<circle cx="${x}" cy="229.5" r="3" fill="none" stroke="rgba(255,255,255,.69)"/>`;});
+ return s+'</g>';}
+function wrap(t,w){const out=[];t.split('\n').forEach(p=>{let line='';p.split(' ').forEach(word=>{if((line+' '+word).trim().length>w&&line){out.push(line);line=word;}else line=(line+' '+word).trim();});out.push(line);});return out;}
+const ARROW='<path d="M2 2 L2 21 L7 16.5 L10.5 24.5 L13.8 23 L10.4 15.2 L17 15.2 Z" fill="#fff" stroke="#000" stroke-width="1.3" stroke-linejoin="round"/>';
+const CROSS='<g stroke="#fff" stroke-width="1.6"><line x1="12" y1="2" x2="12" y2="10"/><line x1="12" y1="14" x2="12" y2="22"/><line x1="2" y1="12" x2="10" y2="12"/><line x1="14" y1="12" x2="22" y2="12"/></g><g stroke="#000" stroke-width=".6" opacity=".6"><line x1="12" y1="2" x2="12" y2="10"/><line x1="2" y1="12" x2="10" y2="12"/></g>';
+const ease=t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+const seg=(t,a,b)=>Math.max(0,Math.min(1,(t-a)/(b-a)));
+function path(t,keys){ // keys: [time,x,y]
+ if(t<=keys[0][0])return keys[0].slice(1);for(let i=1;i<keys.length;i++){if(t<=keys[i][0]){const k=ease(seg(t,keys[i-1][0],keys[i][0]));return [keys[i-1][1]+(keys[i][1]-keys[i-1][1])*k,keys[i-1][2]+(keys[i][2]-keys[i-1][2])*k];}}return keys[keys.length-1].slice(1);}
+const TOOLS=['✥','✎','╱','➚','▢','◯','▬','T','①','▦','■'];
+function toolbar(active){return `<div style="display:flex;align-items:center;gap:2px;background:rgba(27,33,46,.95);border-radius:8px;padding:5px 6px;box-shadow:0 4px 18px rgba(0,0,0,.4)">`+
+ TOOLS.map((g,i)=>`<div style="width:26px;height:26px;border-radius:5px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;${i===active?'background:rgba(255,255,255,.33)':''}">${g}</div>`).join('')+
+ `<div style="width:1px;height:22px;background:rgba(255,255,255,.33);margin:0 4px"></div><div style="width:16px;height:16px;border-radius:8px;background:#E5383B;border:1.5px solid #fff;margin:0 5px"></div><div style="width:1px;height:22px;background:rgba(255,255,255,.33);margin:0 4px"></div>`+
+ ['⧉','⤓','📌'].map(g=>`<div style="width:26px;height:26px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px">${g}</div>`).join('')+
+ `<div style="height:26px;padding:0 10px;border-radius:5px;background:#E8622C;color:#fff;font-size:12px;font-weight:600;display:flex;align-items:center;margin-left:2px">✓</div></div>`;}
+const SEL=[196,112,632,362];
+function arrowEl(x1,y1,x2,y2){return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#E5383B" stroke-width="5" stroke-linecap="round" marker-end="url(#ah)"/>`;}
+function boxEl(x1,y1,x2,y2){return `<rect x="${Math.min(x1,x2)}" y="${Math.min(y1,y2)}" width="${Math.abs(x2-x1)}" height="${Math.abs(y2-y1)}" rx="3" fill="none" stroke="#E5383B" stroke-width="4"/>`;}
+const ARR=[[470,330],[502,256]], BOX=[[488,182],[566,332]];
+
+window.render=function(t){
+ const show=(id,v)=>$(id).style.display=v?'':'none';
+ let cap=null,cursor=ARROW,cp;
+ $('bubble').style.transform='';
+ show('endcard',t>=16.6);
+ // ----- scene A: convert by dragging -----
+ const kA=[[0,420,420],[0.4,420,420],[1.2,50,52],[1.4,50,52],[2.7,862,252],[3.0,866,252],[3.6,842,228],[4.1,790,165],[4.6,790,165]];
+ if(t<7.9){
+  cp=path(t,kA);
+  cap=t<2.8?[1,'Drag any file onto the orange button']:t<4.75?[2,'Drop it on the format you want']:[3,'Saved beside the original. Nothing uploaded'];
+  const dragging=t>=1.4&&t<4.7;
+  show('ghost',dragging);
+  if(dragging){$('ghost').innerHTML=$('ic-heic').querySelector('svg').outerHTML;$('ghost').style.left=(cp[0]-22)+'px';$('ghost').style.top=(cp[1]-14)+'px';}
+  const wOpen=t>=2.75&&t<4.7;show('wheel',wOpen);
+  if(wOpen){const sc=0.85+0.15*ease(seg(t,2.75,2.95));const h=hit(cp[0],cp[1]);$('wheel').innerHTML=wheelSvg('convert',h,sc);$('wheel').style.left=(C.x-190)+'px';$('wheel').style.top=(C.y-190)+'px';}
+  $('ic-jpg').style.opacity=ease(seg(t,4.9,5.3));
+  const tIn=ease(seg(t,4.8,5.05)), tOut=1-ease(seg(t,7.4,7.8));
+  show('toast',t>=4.8);
+  if(t>=4.8){$('toast').innerHTML=`<div class="ic"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M3 8.5 L6.5 12 L13 4.5" fill="none" stroke="#5FD39A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div><div class="t">Done</div><div class="s">Saved holiday.jpg · click to show</div></div>`;
+   $('toast').style.left=(900-300-16+(1-tIn)*40)+'px';$('toast').style.top=(500-62-16)+'px';$('toast').style.opacity=Math.min(tIn,tOut);}
+ } else { show('ghost',0);show('toast',0);$('ic-jpg').style.opacity=1;show('wheel',0); }
+ // ----- scene B: screenshot and mark up -----
+ if(t>=7.9&&t<16.6){
+  const kB=[[7.9,790,165],[8.9,864,250],[9.25,864,250],[9.9,712,118],[10.25,712,118],[10.45,SEL[0]-60,SEL[1]-40],[10.75,SEL[0],SEL[1]],[11.6,SEL[2],SEL[3]],[11.9,ARR[0][0],ARR[0][1]],[12.1,ARR[0][0],ARR[0][1]],[12.8,ARR[1][0],ARR[1][1]],[13.1,BOX[0][0],BOX[0][1]],[13.3,BOX[0][0],BOX[0][1]],[13.9,BOX[1][0],BOX[1][1]],[16.6,BOX[1][0],BOX[1][1]]];
+  cp=path(t,kB);
+  if(t>=9.15&&t<9.3)$('bubble').style.transform='scale(.9)';
+  const wOpen=t>=9.3&&t<10.3;show('wheel',wOpen);
+  if(wOpen){const sc=0.85+0.15*ease(seg(t,9.3,9.5));$('wheel').innerHTML=wheelSvg('capture',hit(cp[0],cp[1]),sc);$('wheel').style.left=(C.x-190)+'px';$('wheel').style.top=(C.y-190)+'px';}
+  cap=t<10.3?[4,'Or click it: screenshots, text, colours, recording']:t<14.2?[5,'Drag over an area and mark it up']:[6,'Copied and saved, ready to paste'];
+  const snipOn=t>=10.35&&t<14.25;show('snip',snipOn);
+  if(snipOn){cursor=t<11.75?CROSS:ARROW;
+   let r=[0,0,0,0];if(t>=10.75){const e=path(Math.min(t,11.6),[[10.75,SEL[0],SEL[1]],[11.6,SEL[2],SEL[3]]]);r=[SEL[0],SEL[1],e[0],e[1]];}
+   const [x1,y1,x2,y2]=r;$('dim').setAttribute('d',`M0 0 H900 V540 H0 Z M${x1} ${y1} H${x2} V${y2} H${x1} Z`);
+   $('selb').setAttribute('x',x1);$('selb').setAttribute('y',y1);$('selb').setAttribute('width',Math.max(0,x2-x1));$('selb').setAttribute('height',Math.max(0,y2-y1));
+   let m='';if(t>=12.1){const e=path(Math.min(t,12.8),[[12.1,ARR[0][0],ARR[0][1]],[12.8,ARR[1][0],ARR[1][1]]]);m+=arrowEl(ARR[0][0],ARR[0][1],e[0],e[1]);}
+   if(t>=13.3){const e=path(Math.min(t,13.9),[[13.3,BOX[0][0],BOX[0][1]],[13.9,BOX[1][0],BOX[1][1]]]);m+=boxEl(BOX[0][0],BOX[0][1],e[0],e[1]);}
+   $('marks').innerHTML=m;
+   const tb=t>=11.65;show('toolbar',tb);if(tb){$('toolbar').innerHTML=toolbar(t<13.1?3:4);$('toolbar').style.left=SEL[0]+'px';$('toolbar').style.top=(SEL[3]+8)+'px';}
+  } else show('toolbar',0);
+  show('keycap',t>=13.95&&t<14.5);
+  const cardOn=t>=14.25;show('card',cardOn);
+  if(cardOn){const k=ease(seg(t,14.25,14.5));
+   $('card').innerHTML=`<div style="display:flex;gap:10px"><div style="position:relative;width:118px;height:68px;overflow:hidden;border-radius:5px;flex:none"><div style="position:absolute;left:0;top:0;width:${SEL[2]-SEL[0]}px;height:${SEL[3]-SEL[1]}px;transform:scale(${118/(SEL[2]-SEL[0])},${68/(SEL[3]-SEL[1])});transform-origin:0 0;overflow:hidden"><div style="position:absolute;left:${168-SEL[0]}px;top:${64-SEL[1]}px">${$('win').outerHTML.replace('id="win" class="abs"','style="position:relative;width:480px;height:330px;background:#f6f7f9;border-radius:10px;overflow:hidden"')}</div><svg width="900" height="540" style="position:absolute;left:${-SEL[0]}px;top:${-SEL[1]}px"><defs><marker id="ah2" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#E5383B"/></marker></defs>${arrowEl(ARR[0][0],ARR[0][1],ARR[1][0],ARR[1][1]).replace('#ah','#ah2')}${boxEl(BOX[0][0],BOX[0][1],BOX[1][0],BOX[1][1])}</svg></div></div>
+   <div><div style="color:#ECEDEF;font-size:13.5px;font-weight:600">Screenshot saved</div><div style="color:#A0A4AC;font-size:12px;margin-top:3px">Copied to the clipboard.<br>Drag it into any app.</div></div></div>
+   <div class="btns"><div class="b p">Copy</div><div class="b">Edit</div><div class="b">Text</div><div class="b">Pin</div><div class="b">Show</div></div>`;
+   $('card').style.left='16px';$('card').style.top=(500-128-16+(1-k)*30)+'px';$('card').style.opacity=k;}
+ } else { show('snip',0);show('toolbar',0);show('keycap',0);show('card',0); }
+ if(t>=16.6){cap=null;}
+ // cursor + caption
+ $('cursor').innerHTML=cursor;$('cursor').style.display=t>=16.6?'none':'';
+ if(cp){const off=cursor===CROSS?12:2;$('cursor').style.left=(cp[0]-off)+'px';$('cursor').style.top=(cp[1]-off)+'px';}
+ if(cap){$('caption').style.display='';$('caption').innerHTML=`<span class="n">${cap[0]}</span>${cap[1]}`;}else $('caption').style.display='none';
+};
+window.DURATION=18.6;
+render(0);
+</script></body></html>

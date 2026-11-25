@@ -5,7 +5,7 @@ using System.Reflection;
 namespace Wheel.App;
 
 /// <summary>
-/// Values filled in when the app is built (see README › Releases), so no keys live in the source code:
+/// Values filled in when the app is built (see docs/RELEASING.md), so no keys live in the source code:
 /// the Google Analytics ids (WHEEL_GA_MEASUREMENT_ID, WHEEL_GA_API_SECRET), the update feed address
 /// (WHEEL_UPDATE_FEED) and the public key that update feeds must be signed with (platform/update-public-key.pem).
 /// Anything left empty switches that feature off.

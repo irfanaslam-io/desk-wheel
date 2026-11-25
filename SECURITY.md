@@ -10,4 +10,4 @@ reply within a few days. Fixes go out through the normal update channels: the in
 feed) and the Microsoft Store.
 
 Desk Wheel works offline: files are converted on your computer and nothing is uploaded. The only network use
-is the update check and, if you said yes, anonymous usage counts (see the README's Privacy section).
+is the update check and, if you said yes, anonymous usage counts (see the README's Privacy section and docs/RELEASING.md).

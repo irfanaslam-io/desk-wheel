@@ -1,0 +1,196 @@
+# Desk Wheel user guide
+
+Everything Desk Wheel can do, and how. New here? Start with [Getting started](../README.md#getting-started) in the README.
+
+## Contents
+
+- [How to use](#how-to-use)
+- [Screenshots](#screenshots)
+- [Clipboard history](#clipboard-history)
+- [Screen tools](#screen-tools)
+- [Copying text from the screen (OCR)](#copying-text-from-the-screen-ocr)
+- [Reading Markdown files](#reading-markdown-files)
+- [Editing screenshots](#editing-screenshots)
+- [More file tools](#more-file-tools)
+- [History](#history)
+- [Office files](#office-files)
+- [Settings](#settings)
+- [Known limits](#known-limits)
+- [Look and feel](#look-and-feel)
+
+## How to use
+
+1. **Drop a file on the orange button** at the edge of your screen. The wheel opens around it. Keep dragging onto a segment, such as JPG, and let go.
+2. **Or select files and click the button**, or press **⌥ Space** on Mac / **Ctrl+Shift+Space** on Windows. Then click a segment.
+3. **Click the wheel's centre** (or right-click anywhere on it) to go to the next wheel: Screenshot → Convert → Tools → Actions → Screenshot. Convert, Tools and Actions work on the files selected in Finder / Explorer. Esc or clicking outside the wheel closes it.
+4. **Select a folder** to work on the files inside it: a folder of photos gets the image conversions and tools for every photo in it (not sub-folders). ZIP and the actions use the folder itself.
+5. **Drag the button** to move it anywhere; the position is remembered.
+
+## Screenshots
+
+| Capture | Mac | Windows |
+| --- | --- | --- |
+| Area | ⌥⇧1 | Alt+Shift+1 |
+| Window | ⌥⇧2 | Alt+Shift+2 |
+| Full screen (the one under the pointer) | ⌥⇧3 | Alt+Shift+3 |
+
+Easiest: **click the orange button**. The wheel opens on **Screenshot**: Area, Window, Full, Text, Clipboard, Record, Colour, then **More ›** for QR, Make QR, 5 s, Files, History and Settings. Wheels with more than eight choices have a **More ›** segment; while dragging a file, rest on it for a moment to turn the page. **Right-click any segment to pin it** to the front of its wheel (★); right-click again to unpin. **Click the centre** to step through Screenshot → Convert → Tools → Actions; dots under the name show where you are. Right-clicking the button captures an area straight away.
+
+- Screenshots are saved to **Pictures → Desk Wheel Screenshots** and copied to the clipboard.
+- A card appears bottom-left with **Copy**, **Edit**, **Text**, **Pin** (keeps it floating on top), **Desk Wheel** (convert it) and **Show**. You can also drag the thumbnail into any app.
+- **Mac:** uses the system's own selection screen (as ⌘⇧4: Space switches to window mode, Esc cancels). Needs the **Screen Recording** permission once.
+- **Windows:** area screenshots open Desk Wheel's own **mark-up overlay** (below); window uses Windows' snipping overlay; full screen is captured directly.
+
+### Mark up while you capture (area screenshots)
+
+Drag over the area, and a toolbar appears right beside it, like Flameshot: **Pencil (P)**, **Line (L)**, **Arrow (A)**, **Box (R)**, **Circle (C)**, **Highlight (H)**, **Text (T)**, **numbered Steps (N)**, **Blur (B)**, **Redact (X)** and **Move (M)**. The colour dot (or keys **1–7**, or right-click) changes colour, the **mouse wheel** sets the line thickness, and **Ctrl+Z / Ctrl+Y** undo and redo.
+
+The selection can be adjusted at any time, even after drawing: drag its **edges or corners** to resize, use **Move** (or hold **Space** and drag) to move it, or nudge it with the **arrow keys** (Shift: 10 px). Marks stay where you drew them on the screen; only the frame moves. Before anything is drawn, dragging outside the selection starts a new one.
+
+Finish with **Enter** (save, and copy if that's on), **Ctrl+C** (copy and save), **Ctrl+S** (save), **Ctrl+P** (pin it on screen) or **Ctrl+E** (open in the full editor for crop and Beautify). **Esc** cancels. Blur and Redact are burned into the saved pixels, so what's hidden is really gone.
+
+On by default on Windows. On a Mac it's off, so macOS's own picker is used; turn on **Settings › Screenshots › Mark up area screenshots right away** to use it there too.
+
+## Clipboard history
+
+Everything you copy (text, links, images, files) is remembered, so you can paste something from earlier.
+
+- Open it with **⌥⇧V** (Mac) / **Alt+Shift+V** (Windows), a **right-click on the orange button**, or **Clipboard** on the Screenshot wheel.
+- Type to search; **↑ ↓** and **Enter**, or click, put an item back on the clipboard; then paste as usual. **⌘1…9** / **Ctrl+1…9** pick one of the first nine.
+- **☆** pins an item: it stays at the top and survives **Clear**. **✕** removes one.
+- The last 300 items (60 images) are kept, on this computer only, in Desk Wheel's settings folder. Copies that password managers mark as private (1Password, Bitwarden, KeePass and others) are never recorded. Turn it off in Settings.
+
+**Copy files:** on the Actions wheel, **Copy** puts the selected files on the clipboard, as Finder's / Explorer's Copy does: paste them into another folder, a chat or an email. **Image** copies the picture itself, ready to paste into a message or document.
+
+## Screen tools
+
+- **Record:** drag over part of the screen; a small **● 0:12 Stop** bar appears beside it. Saved as MP4 in the screenshots folder (drop it on the button for GIF or a smaller MP4). Needs ffmpeg. Choose Record again, or the menu item, to stop. At most 15 minutes.
+- **Colour:** the screen freezes and a magnifier follows the pointer; click to copy the colour as HEX (the card also shows RGB and HSL).
+- **QR:** drag over a QR code or barcode anywhere on screen; what it says is copied. Links can be opened from the card.
+- **Make QR:** copy a link or some text, then choose Make QR: the code appears on the screenshot card, ready to copy, pin or drag out.
+
+## Copying text from the screen (OCR)
+
+Reads text in English and Arabic, on your computer. Nothing is uploaded.
+
+- **Screenshot wheel → Text:** drag over anything on screen (a video, an image, a locked PDF, an error message) and its text is copied to the clipboard. Nothing is saved to your screenshots folder.
+- **Screenshot card → Text:** copies the text in the screenshot you just took.
+- **Tools → Text** on an image: copies its text. With several images, or a folder of them, a `.txt` is saved beside each.
+- **Convert → TXT** on a scanned PDF (pages that are pictures) now reads the pages instead of giving an empty file.
+
+Engines:
+- **Mac:** Apple Vision, the same engine as Live Text. `build-mac.sh` builds a small helper for it, which needs Xcode's command-line tools (`xcode-select --install`). Which languages Vision reads depends on the macOS version; run `./debug-mac.sh` to see them listed in the log.
+- **Windows:** the OCR built into Windows 10 and 11. For Arabic, add Arabic in Settings → Time & language → Language.
+- **Either:** if neither is available, Tesseract is used when installed (`brew install tesseract tesseract-lang`).
+
+## Reading Markdown files
+
+Select a `.md` file (a README, notes, docs) and click the button, then the centre once: **Convert → Read** opens it as a formatted page in your browser, the way GitHub shows a README.
+
+- GitHub's own reading style, in light or dark to match your system.
+- A contents list beside the text, which follows you as you scroll.
+- Coloured code with a **Copy** button, tables, task lists, and GitHub alerts (`> [!NOTE]`).
+- Arabic paragraphs read right to left.
+- Images next to the file show up. **Print / PDF** saves it as a PDF.
+- Works offline. Scripts inside the file are removed before the page is shown.
+
+**Convert → HTML** saves the formatted page beside the file, to share or keep. **Read** is also on the Tools wheel.
+
+## Editing screenshots
+
+Click **Edit** on the screenshot card, or choose **Edit** on the Tools wheel for any image.
+
+| Tool | Key | What it does |
+| --- | --- | --- |
+| Arrow | A | Drag from tail to tip |
+| Box | R | Outline an area |
+| Highlight | H | See-through colour over an area |
+| Text | T | Click, type, press Enter |
+| Steps | N | Click to drop numbered markers 1, 2, 3… |
+| Blur | B | Pixelates an area so it can't be read |
+| Redact | X | Solid black box burned into the pixels: the content is gone, not just covered |
+| Crop | C | Drag the area to keep |
+
+- Five colours.
+- **Undo/Redo:** ⌘Z / ⇧⌘Z (Ctrl on Windows).
+- **Copy** puts the result on the clipboard.
+- **Save** writes `name (edited).png` and never touches the original. **Done** saves and closes.
+
+### Beautify
+
+In the editor, click **Beautify** (or press F) to put the screenshot on a colourful background with padding, rounded corners and a soft shadow, ready for posts and slides. Click again for the next style: Sunset, Ocean, Grape, Mint, Graphite, Paper, then off. It's part of undo like any other change, and you can keep marking up while it's on.
+
+## More file tools
+
+| Tool | Where | What it does |
+| --- | --- | --- |
+| Size… | Tools (images) | Type 1920x1080 (fits inside, keeps proportions), 1080 (width), x720 (height) or 25% |
+| Cut out | Tools (images, Mac 14+) | Removes the background, keeps the subject, as PNG (Apple Vision) |
+| Icons | Tools (images) | App icon set: PNGs 16–1024 px, an ICO, and on Mac an ICNS |
+| Numbers | Tools (PDF) | Page numbers "1 / 12" at the bottom of every page |
+| Compress | Tools (PDF) | Smaller PDF: pictures re-saved at print quality (about 150 DPI), text and drawings untouched |
+| Lock / Unlock | Tools (PDF) | Add or remove a password, AES-256 |
+| Rename | Tools (any files, or a folder's files) | Bulk rename with a live preview: `{name}`, `{n}`, `{date}`, `{folder}`, find and replace, letter case. Never overwrites; Undo puts names back |
+
+**Watched folders** (Settings): pick a folder and what to do, for example *Images → WebP*. Every new file that arrives there is converted automatically, beside the original. Desk Wheel's own results aren't processed again, and files still downloading are waited for.
+
+## History
+
+**History** on the Screenshot wheel (or in the menu-bar/tray menu) lists recent screenshots, converted files and edited copies, newest first, with thumbnails and a search box.
+
+- Double-click a row to open it; drag a row into any app; **Copy** puts an image on the clipboard; **Show** finds it in Finder / Explorer.
+- Files you've deleted or moved drop out of the list. **Clear history** forgets the list; it never deletes files.
+- Only names and paths are kept (in `history.jsonl` beside the settings), never file contents.
+
+## Office files
+
+Word, Excel and PowerPoint files (and OpenDocument, RTF, TXT, CSV) get a Convert wheel:
+
+| File | Converts to |
+| --- | --- |
+| DOCX, DOC, ODT, RTF, TXT | PDF, DOCX, TXT, HTML, ODT |
+| XLSX, XLS, ODS, CSV | PDF, XLSX, CSV (first sheet), ODS |
+| PPTX, PPT, ODP | PDF, PPTX, ODP |
+
+Desk Wheel uses whichever of these is on the computer, in this order:
+
+1. **Microsoft Office** (Word, Excel, PowerPoint). Most people already have it, so there's nothing to install, and the PDF looks exactly as it does in Office. On Windows, Office does every format in the table except TXT; on a Mac, Office does the PDFs. Files are opened read-only with macros off, and Office stays open if you were already using it. The first time on a Mac, macOS asks whether Desk Wheel may control Word, Excel or PowerPoint: click OK.
+2. **LibreOffice** (free, libreoffice.org): everything in the table, and the fallback when Office can't open a file.
+3. On a Mac with neither, the built-in `textutil` still converts word-processor files to DOCX, TXT, HTML and ODT.
+
+## Settings
+
+Open **Settings…** from the menu-bar/tray menu, or from the **Settings** segment on the Screenshot wheel. Changes apply at once.
+
+- **Screenshots:** folder, PNG or JPG, copy to clipboard, show the preview card, window shadow (Mac).
+- **Converted files:** beside the original, or into one folder you choose; JPG/WebP quality.
+- **Video and audio:** shows which ffmpeg is used; choose a specific one, or find it automatically.
+- **General:** on/off, floating button, start at login.
+- **Advanced:** the drag + key gesture, and a button to open the settings/log folder.
+
+Desk Wheel needs no keyboard permission. The first time you use the button's click or the shortcut, macOS asks once whether Desk Wheel may control Finder; that's how it reads your selection.
+
+An optional "drag a file, tap ⇧" gesture can be turned on in the menu-bar menu. It needs the Input Monitoring permission.
+
+### What's on each wheel
+
+| Desk Wheel | What's on it |
+| --- | --- |
+| Screenshot | Area, Window, Full, Text, 5 s, Files, History, Settings |
+| Convert | Images: PNG, JPG, WebP, HEIC (Mac), AVIF, ICO, TIFF, GIF, BMP · PDF → PNG / JPG (every page) / TXT (scanned PDFs too) · Video: MP4, WebM, MKV, MOV, GIF, MP3, M4A · Audio: MP3, M4A, WAV, FLAC, OGG, Opus · ZIP ↔ TAR.GZ, Extract · SRT ↔ VTT, TXT · Office: PDF, DOCX, XLSX, PPTX, CSV… · Markdown: Read, HTML |
+| Tools | Images: Compress, 50%, Rotate, No EXIF, Edit, Text, Images → PDF · PDF: Merge, Split, Rotate · Video: Compress, 50%, Mute, Frame · Audio: Normalize, Mono, Compress · Markdown: Read · ZIP any selection |
+| Actions | Copy path, Open terminal here, Reveal, Copy to Desktop, Copy name |
+
+With the optional keyboard gesture on, Shift / ⌘ (Ctrl) / ⌃ (Alt) also switch to Convert / Tools / Actions. Esc closes the wheel.
+
+## Known limits
+
+- Drags of email attachments or browser images (virtual files) aren't accepted yet. Save them first.
+- Scrolling screenshots and offline translation aren't built (see the ideas list).
+- Colour picking and choosing a recording area work on the screen under the pointer; the top strip under the macOS menu bar can't be picked.
+- Windows: drags from an app running as administrator can't reach Desk Wheel (a Windows security rule).
+- With "Work in all apps" on, holding the mouse and tapping a key (for example, to select text) can briefly open an empty wheel. It closes when you let go.
+
+## Look and feel
+
+Light and dark themes: **Settings → General → Theme** (Match system, Light, Dark). *Match system* follows macOS / Windows and switches the moment you change it there; open windows recolour without restarting.

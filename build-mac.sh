@@ -9,7 +9,7 @@
 #   --skip-tests   don't run the core tests first
 #   --dmg          also make dist/DeskWheel-<version>.dmg (drag-to-Applications installer)
 # For sharing DeskWheel with other people (so macOS doesn't block it), sign and notarize with your Apple
-# Developer account. Set these before running (see README, "Releasing"):
+# Developer account. Set these before running (see docs/RELEASING.md):
 #   WHEEL_SIGN_ID="Developer ID Application: Your Name (TEAMID)"
 #   WHEEL_NOTARY_PROFILE="wheel-notary"   # made once with: xcrun notarytool store-credentials wheel-notary
 set -euo pipefail

@@ -11,7 +11,7 @@ on:
 permissions:
   contents: read
 
-# Built into the app (see README › Releases). Missing secrets just switch the feature off.
+# Built into the app (see docs/RELEASING.md). Missing secrets just switch the feature off.
 env:
   WHEEL_GA_MEASUREMENT_ID: ${{ secrets.GA_MEASUREMENT_ID }}
   WHEEL_GA_API_SECRET: ${{ secrets.GA_API_SECRET }}
@@ -131,35 +131,55 @@ jobs:
           APP=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' src/Wheel.App/Wheel.App.csproj)
           [ "$VERSION" = "$APP" ] || { echo "Tag $GITHUB_REF_NAME doesn't match <Version>$APP</Version>"; exit 1; }
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+      - name: What's new
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # A release made on GitHub keeps its own text; otherwise the tag's message is used.
+          if gh release view "v$VERSION" -R "$RELEASES_REPO" --json body -q .body > whats-new.txt 2>/dev/null && [ -s whats-new.txt ]; then
+            echo "Using the release's text"
+          else
+            git tag -l --format='%(contents)' "$GITHUB_REF_NAME" > whats-new.txt
+            [ "$(cat whats-new.txt)" != "$(git log -1 --format=%B)" ] || : > whats-new.txt
+          fi
+          # Plain text for the in-app update prompt (without the download tables of an earlier run).
+          python3 -c "import importlib.util,sys;s=importlib.util.spec_from_file_location('n','scripts/release-notes.py');m=importlib.util.module_from_spec(s);s.loader.exec_module(m);print(m.whats_new(open('whats-new.txt').read(),sys.argv[1]))" "$VERSION" | head -c 1500 > notes.txt
+          echo "PREVIOUS_TAG=$(git describe --tags --abbrev=0 --match 'v*' "$GITHUB_REF_NAME^" 2>/dev/null || true)" >> "$GITHUB_ENV"
       - name: Write and sign update.json
         env:
           UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
         run: |
-          [ -n "$UPDATE_SIGNING_KEY" ] || { echo "Add the UPDATE_SIGNING_KEY secret (README › Releases)"; exit 1; }
+          [ -n "$UPDATE_SIGNING_KEY" ] || { echo "Add the UPDATE_SIGNING_KEY secret (docs/RELEASING.md)"; exit 1; }
           umask 077; printf '%s\n' "$UPDATE_SIGNING_KEY" > "$RUNNER_TEMP/key.pem"
           mkdir -p out
           cp artifacts/DeskWheel-mac-arm64/*.dmg "out/DeskWheel-$VERSION-mac-arm64.dmg"
           cp artifacts/DeskWheel-win-x64/*-setup.exe out/
           cp artifacts/DeskWheel-win-arm64/*-setup.exe out/
-          git tag -l --format='%(contents)' "$GITHUB_REF_NAME" | head -c 1500 > notes.txt
-          [ -s notes.txt ] && [ "$(cat notes.txt)" != "$(git log -1 --format=%B)" ] || echo "Desk Wheel $VERSION" > notes.txt
-          NOTES=$(cat notes.txt)
           python3 scripts/make-update-feed.py --version "$VERSION" \
             --base-url "https://github.com/$RELEASES_REPO/releases/download/v$VERSION" \
             --page "https://github.com/$RELEASES_REPO/releases/tag/v$VERSION" \
-            --notes "$NOTES" --key "$RUNNER_TEMP/key.pem" --out out \
+            --notes "$(cat notes.txt)" --key "$RUNNER_TEMP/key.pem" --out out \
             mac-arm64="out/DeskWheel-$VERSION-mac-arm64.dmg" \
             windows-x64="out/DeskWheel-$VERSION-win-x64-setup.exe" \
             windows-arm64="out/DeskWheel-$VERSION-win-arm64-setup.exe"
           rm -f "$RUNNER_TEMP/key.pem"
+      - name: Release notes and checksums
+        env:
+          STORE_LIVE: ${{ vars.STORE_LIVE }}
+        run: |
+          python3 scripts/release-notes.py --version "$VERSION" --repo "$RELEASES_REPO" \
+            --whats-new whats-new.txt --previous-tag "$PREVIOUS_TAG" --dir out --out release-notes.md \
+            $([ "$STORE_LIVE" = true ] && echo --store-live)
+          cat release-notes.md
       - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          files=(out/*.dmg out/*-setup.exe out/update.json out/update.json.sig)
+          files=(out/*.dmg out/*-setup.exe out/SHA256SUMS.txt out/update.json out/update.json.sig)
           if gh release view "v$VERSION" -R "$RELEASES_REPO" >/dev/null 2>&1; then
-            # Made by hand on GitHub (Releases › Draft a new release): keep its text, add the files.
+            # Made by hand on GitHub (Releases › Draft a new release): add the files and the standard notes.
             gh release upload "v$VERSION" -R "$RELEASES_REPO" --clobber "${files[@]}"
+            gh release edit "v$VERSION" -R "$RELEASES_REPO" --title "Desk Wheel $VERSION" --notes-file release-notes.md
           else
-            gh release create "v$VERSION" -R "$RELEASES_REPO" --title "Desk Wheel $VERSION" --notes-file notes.txt "${files[@]}"
+            gh release create "v$VERSION" -R "$RELEASES_REPO" --title "Desk Wheel $VERSION" --notes-file release-notes.md "${files[@]}"
           fi
