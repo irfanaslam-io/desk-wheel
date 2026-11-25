@@ -57,6 +57,11 @@ jobs:
           grep -q "Lesser General Public" licence.txt
           "$F" -hide_banner -encoders | grep -E "h264_videotoolbox|libmp3lame|libopus|libvpx-vp9|libaom-av1"
           ! otool -L "$F" | grep -E '/opt/homebrew|/usr/local'
+      - name: Self-test the app from the DMG (video, audio, PDF, ZIP with the shipped engines)
+        run: |
+          hdiutil attach dist/*.dmg -nobrowse -mountpoint "$RUNNER_TEMP/dmg"
+          "$RUNNER_TEMP/dmg/DeskWheel.app/Contents/MacOS/DeskWheel" --self-test "$RUNNER_TEMP/self-test"
+          hdiutil detach "$RUNNER_TEMP/dmg"
       - uses: actions/upload-artifact@v4
         with:
           name: DeskWheel-mac-arm64
@@ -99,6 +104,11 @@ jobs:
           WHEEL_MSIX_PUBLISHER_NAME: ${{ vars.MSIX_PUBLISHER_NAME }}
         run: ./build.ps1 -Runtime ${{ matrix.rid }} -SkipTests -Installer -Msix
 
+      - name: Install it and self-test (video, audio, PDF, ZIP with the shipped engines)
+        if: matrix.rid == 'win-x64'   # the Arm build is tested on an Arm PC below
+        shell: pwsh
+        run: ./scripts/self-test-installer.ps1 (Get-Item dist/*-win-x64-setup.exe).FullName
+
       - uses: actions/upload-artifact@v4
         with:
           name: DeskWheel-${{ matrix.rid }}
@@ -108,11 +118,25 @@ jobs:
           name: DeskWheel-${{ matrix.rid }}-store
           path: dist/*.msix
 
+  windows-arm64-test:
+    # The Arm build can't run on the x64 build machine, so it's installed and tested on a Windows Arm PC.
+    runs-on: windows-11-arm
+    needs: windows
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: DeskWheel-win-arm64
+          path: dist
+      - name: Install it and self-test
+        shell: pwsh
+        run: ./scripts/self-test-installer.ps1 (Get-Item dist/*-win-arm64-setup.exe).FullName
+
   # Publishes a version: installers + the signed update feed, as a GitHub release on the public releases repo.
   # Installed copies of Desk Wheel read .../releases/latest/download/update.json from there.
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [mac, windows]
+    needs: [mac, windows, windows-arm64-test]
     runs-on: ubuntu-latest
     permissions:
       contents: write   # to create the GitHub release in this repository

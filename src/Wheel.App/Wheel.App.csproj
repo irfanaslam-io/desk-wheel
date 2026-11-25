@@ -12,7 +12,7 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <!-- Lets the Windows "Send to" shortcut use COM late binding. -->
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
     <Product>Desk Wheel</Product>
     <ApplicationIcon>..\..\platform\icons\AppIcon.ico</ApplicationIcon>
     <Company>irfanaslam.io</Company>
@@ -35,17 +35,19 @@
 
   <!-- PDFium for the target platform (scripts/get-pdfium.sh), shipped as engines/ beside the app. -->
   <ItemGroup Condition="'$(RuntimeIdentifier)' != ''">
+    <!-- ExcludeFromSingleFile: real files beside DeskWheel.exe. Without it, newer SDKs' single-file publish
+         silently drops them (NETSDK1236), and video, audio and PDF tools disappear. -->
     <None Include="..\..\engines\pdfium\$(RuntimeIdentifier)\*" Link="engines\%(Filename)%(Extension)"
-          CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+          CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
     <!-- The bundled LGPL ffmpeg (scripts/build-ffmpeg.sh on Mac, build.ps1 on Windows), with its licence and source notes. -->
     <None Include="..\..\engines\ffmpeg\$(RuntimeIdentifier)\*" Link="engines\%(Filename)%(Extension)"
-          CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+          CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
   </ItemGroup>
 
   <!-- The Markdown reader's page files (marked, DOMPurify, highlight.js, GitHub's CSS), same on every platform. -->
   <ItemGroup>
     <None Include="..\..\engines\markdown\*" Link="engines\markdown\%(Filename)%(Extension)"
-          CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+          CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
   </ItemGroup>
 
   <ItemGroup>

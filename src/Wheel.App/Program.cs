@@ -11,6 +11,7 @@ namespace Wheel.App;
 /// <list type="bullet">
 /// <item><c>Wheel</c> with no files: lives in the menu bar / tray and listens for the drag gesture (one instance per user).</item>
 /// <item><c>Wheel file1 file2…</c> (Windows "Send to", or a terminal): a clickable wheel for those files, then exits.</item>
+/// <item><c>Wheel --self-test [folder]</c>: checks the shipped engines on generated files (see <see cref="SelfTest"/>).</item>
 /// </list>
 /// </summary>
 internal static class Program
@@ -24,6 +25,10 @@ internal static class Program
     [STAThread]
     public static int Main(string[] args)
     {
+        // DeskWheel --self-test [folder]: check this copy's engines on generated files, then exit (used by the build).
+        if (args.Length > 0 && args[0] == "--self-test")
+            return SelfTest.Run(args.Length > 1 ? args[1] : null);
+
         Debug = args.Contains("--debug");
         RenameMigration.Run(); // "Wheel" → "Desk Wheel": carry over settings and login item, once
 
