@@ -124,7 +124,7 @@ jobs:
     needs: windows
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: DeskWheel-win-arm64
           path: dist
@@ -146,7 +146,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0   # the tag's message becomes the release notes
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: artifacts
       - name: Check the tag matches the app's version
