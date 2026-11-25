@@ -198,8 +198,17 @@ Windows and macOS only fully trust apps signed by someone they recognise. Desk W
 ### Microsoft Store (free, fully trusted)
 
 1. **Register** at [storedeveloper.microsoft.com](https://storedeveloper.microsoft.com/home) with a personal Microsoft account: free for individuals, with an ID-and-selfie check.
-2. In **Partner Center**, create the app and reserve the name **Desk Wheel**. Open *Product identity* and copy **Package/Identity/Name**, **Package/Identity/Publisher** (`CN=…`) and **Package/Properties/PublisherDisplayName**.
-3. In this repo's **Settings › Secrets and variables › Actions › Variables**, add `MSIX_NAME`, `MSIX_PUBLISHER` and `MSIX_PUBLISHER_NAME` with those three values. (Locally: set `WHEEL_MSIX_NAME`, `WHEEL_MSIX_PUBLISHER`, `WHEEL_MSIX_PUBLISHER_NAME`.)
+2. In **Partner Center**, the app **Desk Wheel** is reserved. Its identity is built into `build.ps1`, so nothing needs setting:
+
+   | Product identity | Value |
+   | --- | --- |
+   | Package/Identity/Name | `irfanaslam.io.DeskWheel` |
+   | Package/Identity/Publisher | `CN=E17FA43C-D005-44B0-BA35-1A38B8D60FD6` |
+   | Package/Properties/PublisherDisplayName | `irfanaslam.io` |
+   | Package family name | `irfanaslam.io.DeskWheel_69qks97mj3kmy` |
+   | Store ID | `9PF534B6ZW4Z` |
+
+3. Store page: [apps.microsoft.com/detail/9PF534B6ZW4Z](https://apps.microsoft.com/detail/9PF534B6ZW4Z) (live once the first submission is certified); in Windows, `ms-windows-store://pdp/?productid=9PF534B6ZW4Z` opens it in the Store app. To build for another identity, set `WHEEL_MSIX_NAME`, `WHEEL_MSIX_PUBLISHER` and `WHEEL_MSIX_PUBLISHER_NAME` (or the Actions variables `MSIX_NAME`, `MSIX_PUBLISHER`, `MSIX_PUBLISHER_NAME`).
 4. Build: GitHub Actions produces `DeskWheel-<version>-win-x64.msix` and `-win-arm64.msix` (artifacts *DeskWheel-win-…-store*), or run `.\build.ps1 -Msix` on a PC with the Windows SDK (`winget install Microsoft.WindowsSDK.10.0.26100`).
 5. In Partner Center, start a submission: upload both `.msix` files under *Packages*, then fill in the Store listing (description, screenshots, the icon from `platform/icons`), age rating and the privacy policy link (the app can send anonymous usage counts when allowed, see Privacy below). Microsoft certifies and signs it, usually within a few days.
 6. For each new version: bump `<Version>`, build, and upload the new `.msix` files in a new submission. People get it automatically from the Store.

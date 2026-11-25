@@ -2,7 +2,8 @@
 <!--
   Microsoft Store package for Desk Wheel. build.ps1 -Msix fills in the {TOKENS}:
   {NAME}, {PUBLISHER} and {PUBLISHER_NAME} come from Partner Center › your app › Product identity
-  (set WHEEL_MSIX_NAME, WHEEL_MSIX_PUBLISHER, WHEEL_MSIX_PUBLISHER_NAME); {VERSION} is <Version>.0.
+  (irfanaslam.io.DeskWheel / CN=E17FA43C-D005-44B0-BA35-1A38B8D60FD6 / irfanaslam.io, built into build.ps1;
+  WHEEL_MSIX_* override them); {VERSION} is <Version>.0. Package family name: irfanaslam.io.DeskWheel_69qks97mj3kmy.
   The Store signs the package, so Windows trusts it fully (no Smart App Control or SmartScreen prompts).
 -->
 <Package

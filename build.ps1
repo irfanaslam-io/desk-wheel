@@ -13,7 +13,7 @@
 #   -Msix                also make dist\DeskWheel-<version>-<runtime>.msix for the Microsoft Store (free;
 #                        Microsoft signs it, so Windows trusts it fully). Needs the Windows SDK (makeappx, makepri):
 #                        winget install Microsoft.WindowsSDK.10.0.26100
-#                        Store identity: WHEEL_MSIX_NAME, WHEEL_MSIX_PUBLISHER, WHEEL_MSIX_PUBLISHER_NAME
+#                        Store identity is built in; WHEEL_MSIX_NAME, WHEEL_MSIX_PUBLISHER, WHEEL_MSIX_PUBLISHER_NAME override it
 #                        (Partner Center › your app › Product identity). Try it locally with Developer Mode on:
 #                        Add-AppxPackage -Register dist\msix-win-x64\AppxManifest.xml
 #
@@ -196,10 +196,11 @@ if ($Msix) {
     foreach ($n in 'Square44x44Logo', 'Square150x150Logo', 'Wide310x150Logo', 'StoreLogo') {
         Copy-Item "$layout\Assets\$n.scale-100.png" "$layout\Assets\$n.png"
     }
-    $msixName = if ($env:WHEEL_MSIX_NAME) { $env:WHEEL_MSIX_NAME } else { 'irfanaslam.DeskWheel' }
-    $msixPublisher = if ($env:WHEEL_MSIX_PUBLISHER) { $env:WHEEL_MSIX_PUBLISHER } else { 'CN=DeskWheel Development' }
+    # Desk Wheel's Microsoft Store identity (Partner Center › Product identity; Store ID 9PF534B6ZW4Z).
+    # Not secret: it's in every installed package. The WHEEL_MSIX_* variables override it.
+    $msixName = if ($env:WHEEL_MSIX_NAME) { $env:WHEEL_MSIX_NAME } else { 'irfanaslam.io.DeskWheel' }
+    $msixPublisher = if ($env:WHEEL_MSIX_PUBLISHER) { $env:WHEEL_MSIX_PUBLISHER } else { 'CN=E17FA43C-D005-44B0-BA35-1A38B8D60FD6' }
     $msixPublisherName = if ($env:WHEEL_MSIX_PUBLISHER_NAME) { $env:WHEEL_MSIX_PUBLISHER_NAME } else { 'irfanaslam.io' }
-    if (-not $env:WHEEL_MSIX_PUBLISHER) { Write-Warning "WHEEL_MSIX_PUBLISHER isn't set: this package is for local testing; the Store needs your Partner Center identity." }
     $msixArch = if ($Runtime -eq 'win-arm64') { 'arm64' } else { 'x64' }
     $manifest = Get-Content platform\windows\msix\AppxManifest.xml -Raw
     $manifest = $manifest.Replace('{NAME}', $msixName).Replace('{PUBLISHER_NAME}', $msixPublisherName)
