@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- A dependency-free test runner (no NuGet needed). Run: dotnet run, project tests/Wheel.Core.Tests -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <!-- Run on whatever newer .NET is installed (e.g. only .NET 11 on a Mac). -->
+    <RollForward>LatestMajor</RollForward>
+    <!-- Run through dotnet itself (signed by Microsoft) instead of a freshly built, unsigned .exe, so
+         Windows Smart App Control / Application Control policies don't block the tests. -->
+    <UseAppHost>false</UseAppHost>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <!-- PDFium for this machine (downloaded by scripts/get-pdfium.sh); PDF tests skip themselves without it. -->
+  <ItemGroup>
+    <None Include="..\..\engines\pdfium\$(NETCoreSdkRuntimeIdentifier)\*" Link="engines\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Wheel.Core\Wheel.Core.csproj" />
+  </ItemGroup>
+
+</Project>

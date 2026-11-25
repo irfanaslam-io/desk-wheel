@@ -1,0 +1,13 @@
+# Keeps GitHub Actions and NuGet packages up to date (security fixes arrive as pull requests).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: monthly }
+  - package-ecosystem: nuget
+    directories: ["/src/Wheel.Core", "/src/Wheel.App", "/tests/Wheel.Core.Tests"]
+    schedule: { interval: monthly }
+    open-pull-requests-limit: 5
+    groups:
+      avalonia: { patterns: ["Avalonia*"] }
+      skia: { patterns: ["SkiaSharp*", "HarfBuzzSharp*"] }

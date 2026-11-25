@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security problem
+    url: https://github.com/irfanaslam-io/desk-wheel/blob/main/SECURITY.md
+    about: Please report security problems privately, not as an issue.
+  - name: Business licence or other questions
+    url: https://irfanaslam.io
+    about: Larger companies and general questions — hello@irfanaslam.io

@@ -1,0 +1,30 @@
+name: Feature idea
+description: Suggest a new tool or an improvement.
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would you like to do?
+      description: Describe the task or problem, not just the solution.
+      placeholder: "I often need to turn several photos into one PDF."
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: How could Desk Wheel help?
+      placeholder: "A 'Combine into PDF' option on the Convert wheel when several images are selected."
+  - type: dropdown
+    id: os
+    attributes:
+      label: Which computers?
+      multiple: true
+      options:
+        - Windows
+        - macOS
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Examples from other apps, sketches or screenshots are welcome.

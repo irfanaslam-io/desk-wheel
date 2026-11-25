@@ -1,0 +1,160 @@
+name: build
+
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']          # a version tag (v0.18.0) also publishes the release and the update feed
+  pull_request:
+  workflow_dispatch:
+
+# Least privilege: the jobs only read the code (publishing uses its own RELEASES_TOKEN).
+permissions:
+  contents: read
+
+# Built into the app (see README › Releases). Missing secrets just switch the feature off.
+env:
+  WHEEL_GA_MEASUREMENT_ID: ${{ secrets.GA_MEASUREMENT_ID }}
+  WHEEL_GA_API_SECRET: ${{ secrets.GA_API_SECRET }}
+
+jobs:
+  core-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Install ffmpeg and PDFium (for the recipe and PDF tests)
+        run: |
+          sudo apt-get update && sudo apt-get install -y ffmpeg
+          bash scripts/get-pdfium.sh linux-x64
+      - name: Core tests
+        run: dotnet run --project tests/Wheel.Core.Tests -c Release
+
+  mac:
+    # macOS minutes cost 10x: build the Mac app only for releases (tags) or when started by hand.
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    runs-on: macos-latest   # Apple silicon
+    needs: core-tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Cache the bundled ffmpeg (it takes ~15 minutes to build)
+        uses: actions/cache@v4
+        with:
+          path: engines/ffmpeg
+          key: ffmpeg-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/build-ffmpeg.sh') }}
+      - name: Build DeskWheel.app and the DMG (builds ffmpeg once, runs core tests on macOS first)
+        run: |
+          brew install cmake pkg-config nasm
+          WHEEL_REQUIRE_FFMPEG=1 ./build-mac.sh --dmg
+      - name: Check the bundled ffmpeg is LGPL and uses no Homebrew libraries
+        run: |
+          F=dist/DeskWheel.app/Contents/MacOS/engines/ffmpeg
+          test -x "$F" || { echo "ffmpeg is missing from the app"; exit 1; }
+          "$F" -hide_banner -L > licence.txt; head -3 licence.txt
+          grep -q "Lesser General Public" licence.txt
+          "$F" -hide_banner -encoders | grep -E "h264_videotoolbox|libmp3lame|libopus|libvpx-vp9|libaom-av1"
+          ! otool -L "$F" | grep -E '/opt/homebrew|/usr/local'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DeskWheel-mac-arm64
+          path: dist/*.dmg
+
+  windows:
+    runs-on: windows-latest
+    needs: core-tests
+    strategy:
+      fail-fast: false   # one failing runtime shouldn't hide the other's result
+      matrix:
+        rid: [win-x64, win-arm64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Download PDFium
+        shell: bash
+        run: |
+          bash scripts/get-pdfium.sh ${{ matrix.rid }}
+          bash scripts/get-pdfium.sh win-x64
+
+      - name: Core tests on Windows (paths, drive letters, ffmpeg.exe)
+        if: matrix.rid == 'win-x64'
+        run: |
+          choco install ffmpeg -y --no-progress
+          dotnet run --project tests/Wheel.Core.Tests -c Release
+
+      - name: Install Inno Setup (for the installer)
+        run: choco install innosetup -y --no-progress
+
+      - name: Build DeskWheel.exe, bundle ffmpeg, make the installer
+        shell: pwsh
+        env:
+          # Microsoft Store identity (Partner Center › Product identity); set as repository variables.
+          WHEEL_MSIX_NAME: ${{ vars.MSIX_NAME }}
+          WHEEL_MSIX_PUBLISHER: ${{ vars.MSIX_PUBLISHER }}
+          WHEEL_MSIX_PUBLISHER_NAME: ${{ vars.MSIX_PUBLISHER_NAME }}
+        run: ./build.ps1 -Runtime ${{ matrix.rid }} -SkipTests -Installer -Msix
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DeskWheel-${{ matrix.rid }}
+          path: dist/*-setup.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DeskWheel-${{ matrix.rid }}-store
+          path: dist/*.msix
+
+  # Publishes a version: installers + the signed update feed, as a GitHub release on the public releases repo.
+  # Installed copies of Desk Wheel read .../releases/latest/download/update.json from there.
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [mac, windows]
+    runs-on: ubuntu-latest
+    env:
+      RELEASES_REPO: irfanaslam-io/desk-wheel-releases
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # the tag's message becomes the release notes
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Check the tag matches the app's version
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          APP=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' src/Wheel.App/Wheel.App.csproj)
+          [ "$VERSION" = "$APP" ] || { echo "Tag $GITHUB_REF_NAME doesn't match <Version>$APP</Version>"; exit 1; }
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+      - name: Write and sign update.json
+        env:
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+        run: |
+          [ -n "$UPDATE_SIGNING_KEY" ] || { echo "Add the UPDATE_SIGNING_KEY secret (README › Releases)"; exit 1; }
+          umask 077; printf '%s\n' "$UPDATE_SIGNING_KEY" > "$RUNNER_TEMP/key.pem"
+          mkdir -p out
+          cp artifacts/DeskWheel-mac-arm64/*.dmg "out/DeskWheel-$VERSION-mac-arm64.dmg"
+          cp artifacts/DeskWheel-win-x64/*-setup.exe out/
+          cp artifacts/DeskWheel-win-arm64/*-setup.exe out/
+          git tag -l --format='%(contents)' "$GITHUB_REF_NAME" | head -c 1500 > notes.txt
+          [ -s notes.txt ] && [ "$(cat notes.txt)" != "$(git log -1 --format=%B)" ] || echo "Desk Wheel $VERSION" > notes.txt
+          NOTES=$(cat notes.txt)
+          python3 scripts/make-update-feed.py --version "$VERSION" \
+            --base-url "https://github.com/$RELEASES_REPO/releases/download/v$VERSION" \
+            --page "https://github.com/$RELEASES_REPO/releases/tag/v$VERSION" \
+            --notes "$NOTES" --key "$RUNNER_TEMP/key.pem" --out out \
+            mac-arm64="out/DeskWheel-$VERSION-mac-arm64.dmg" \
+            windows-x64="out/DeskWheel-$VERSION-win-x64-setup.exe" \
+            windows-arm64="out/DeskWheel-$VERSION-win-arm64-setup.exe"
+          rm -f "$RUNNER_TEMP/key.pem"
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+        run: |
+          [ -n "$GH_TOKEN" ] || { echo "Add the RELEASES_TOKEN secret (README › Releases)"; exit 1; }
+          gh release create "v$VERSION" -R "$RELEASES_REPO" --title "Desk Wheel $VERSION" \
+            --notes-file notes.txt out/*.dmg out/*-setup.exe out/update.json out/update.json.sig

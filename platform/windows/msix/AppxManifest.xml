@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Microsoft Store package for Desk Wheel. build.ps1 -Msix fills in the {TOKENS}:
+  {NAME}, {PUBLISHER} and {PUBLISHER_NAME} come from Partner Center › your app › Product identity
+  (set WHEEL_MSIX_NAME, WHEEL_MSIX_PUBLISHER, WHEEL_MSIX_PUBLISHER_NAME); {VERSION} is <Version>.0.
+  The Store signs the package, so Windows trusts it fully (no Smart App Control or SmartScreen prompts).
+-->
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap desktop rescap">
+
+  <Identity Name="{NAME}" Publisher="{PUBLISHER}" Version="{VERSION}" ProcessorArchitecture="{ARCH}" />
+
+  <Properties>
+    <DisplayName>Desk Wheel</DisplayName>
+    <PublisherDisplayName>{PUBLISHER_NAME}</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+    <Description>Drop it. Turn it. Done. Convert files, take and mark up screenshots, and keep a clipboard history, all offline.</Description>
+  </Properties>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="en-us" />
+  </Resources>
+
+  <Applications>
+    <Application Id="DeskWheel" Executable="DeskWheel.exe" EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements DisplayName="Desk Wheel" Description="Drop it. Turn it. Done."
+                          BackgroundColor="transparent"
+                          Square150x150Logo="Assets\Square150x150Logo.png" Square44x44Logo="Assets\Square44x44Logo.png">
+        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" ShortName="Desk Wheel" />
+      </uap:VisualElements>
+      <Extensions>
+        <!-- Starts in the background at sign-in (users switch it in Settings › Apps › Startup). -->
+        <desktop:Extension Category="windows.startupTask" Executable="DeskWheel.exe" EntryPoint="Windows.FullTrustApplication">
+          <desktop:StartupTask TaskId="DeskWheelAtSignIn" Enabled="true" DisplayName="Desk Wheel" />
+        </desktop:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+
+  <Capabilities>
+    <!-- A regular desktop app: screenshots, the floating button and file conversion need full trust. -->
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+</Package>

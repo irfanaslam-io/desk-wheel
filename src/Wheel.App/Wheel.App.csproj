@@ -1,0 +1,75 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- One app for macOS and Windows: Avalonia UI + thin native gesture layers in Platform/. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>DeskWheel</AssemblyName>
+    <RootNamespace>Wheel.App</RootNamespace>
+    <!-- Windows only: DPI awareness and "never elevated". Ignored on macOS. -->
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- Lets the Windows "Send to" shortcut use COM late binding. -->
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    <Version>0.18.0</Version>
+    <Product>Desk Wheel</Product>
+    <ApplicationIcon>..\..\platform\icons\AppIcon.ico</ApplicationIcon>
+    <Company>irfanaslam.io</Company>
+    <!-- Free for individuals and small businesses; larger companies: hello@irfanaslam.io (see LICENSE.md) -->
+    <PackageLicenseExpression>PolyForm-Small-Business-1.0.0 OR PolyForm-Noncommercial-1.0.0</PackageLicenseExpression>
+    <Copyright>Copyright (c) 2026 Muhammad Irfan Aslam · Free for individuals and small businesses · hello@irfanaslam.io</Copyright>
+    <Description>Desk Wheel: Drop it. Turn it. Done.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Avalonia brings SkiaSharp, which the image engine uses directly. -->
+    <PackageReference Include="Avalonia" Version="11.3.0" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.3.0" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.0" />
+    <!-- Text shaping for the editor's Text tool (joined Arabic letters, right-to-left runs). Same 2.88 line as Avalonia's SkiaSharp. -->
+    <PackageReference Include="SkiaSharp.HarfBuzz" Version="2.88.9" />
+    <!-- Avalonia's Linux-only D-Bus dependency, pinned to the release with the security fix (never used on Mac or Windows). -->
+    <PackageReference Include="Tmds.DBus.Protocol" Version="0.21.3" />
+  </ItemGroup>
+
+  <!-- PDFium for the target platform (scripts/get-pdfium.sh), shipped as engines/ beside the app. -->
+  <ItemGroup Condition="'$(RuntimeIdentifier)' != ''">
+    <None Include="..\..\engines\pdfium\$(RuntimeIdentifier)\*" Link="engines\%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <!-- The bundled LGPL ffmpeg (scripts/build-ffmpeg.sh on Mac, build.ps1 on Windows), with its licence and source notes. -->
+    <None Include="..\..\engines\ffmpeg\$(RuntimeIdentifier)\*" Link="engines\%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!-- The Markdown reader's page files (marked, DOMPurify, highlight.js, GitHub's CSS), same on every platform. -->
+  <ItemGroup>
+    <None Include="..\..\engines\markdown\*" Link="engines\markdown\%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Lets the UI preview harness (not shipped) render Wheel's windows off-screen for checking. -->
+    <InternalsVisibleTo Include="Wheel.UiPreview" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Wheel.Core\Wheel.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- App icons (made by scripts/icons): window, menu bar (macOS template) and tray -->
+    <EmbeddedResource Include="Assets\*.png" LogicalName="DeskWheel.%(Filename)%(Extension)" />
+  </ItemGroup>
+  <!-- Filled in at build time (environment variables or -p:), so no keys are kept in the source. Empty = off. -->
+  <PropertyGroup>
+    <WHEEL_UPDATE_FEED Condition="'$(WHEEL_UPDATE_FEED)' == ''">https://github.com/irfanaslam-io/desk-wheel-releases/releases/latest/download/update.json</WHEEL_UPDATE_FEED>
+  </PropertyGroup>
+  <ItemGroup>
+    <AssemblyMetadata Include="GaMeasurementId" Value="$(WHEEL_GA_MEASUREMENT_ID)" />
+    <AssemblyMetadata Include="GaApiSecret" Value="$(WHEEL_GA_API_SECRET)" />
+    <AssemblyMetadata Include="UpdateFeed" Value="$(WHEEL_UPDATE_FEED)" />
+    <!-- Updates are installed only when their feed is signed by the matching private key (kept in CI secrets). -->
+    <EmbeddedResource Include="..\..\platform\update-public-key.pem" LogicalName="DeskWheel.update-public-key.pem" Condition="Exists('..\..\platform\update-public-key.pem')" />
+  </ItemGroup>
+</Project>
