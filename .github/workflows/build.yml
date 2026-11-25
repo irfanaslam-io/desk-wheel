@@ -156,5 +156,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "v$VERSION" -R "$RELEASES_REPO" --title "Desk Wheel $VERSION" \
-            --notes-file notes.txt out/*.dmg out/*-setup.exe out/update.json out/update.json.sig
+          files=(out/*.dmg out/*-setup.exe out/update.json out/update.json.sig)
+          if gh release view "v$VERSION" -R "$RELEASES_REPO" >/dev/null 2>&1; then
+            # Made by hand on GitHub (Releases › Draft a new release): keep its text, add the files.
+            gh release upload "v$VERSION" -R "$RELEASES_REPO" --clobber "${files[@]}"
+          else
+            gh release create "v$VERSION" -R "$RELEASES_REPO" --title "Desk Wheel $VERSION" --notes-file notes.txt "${files[@]}"
+          fi
