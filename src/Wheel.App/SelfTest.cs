@@ -99,8 +99,18 @@ internal static class SelfTest
             p.WaitForExit();
             return p.ExitCode == 0 && File.Exists(video) ? null : err.Trim();
         });
-        foreach (var id in new[] { "vid.to-gif", "vid.to-webm", "vid.to-m4a", "vid.snapshot" })
+        var encoders = FfmpegConverter.Locate() is { } found ? FfmpegConverter.Encoders(found) : new HashSet<string>();
+        foreach (var id in new[] { "vid.to-gif", "vid.to-m4a", "vid.snapshot", "vid.to-mp4", "vid.to-webm", "vid.to-mp3" })
+        {
+            // Only what the wheel offers with this ffmpeg; the rest is hidden in the app, so it's listed, not failed.
+            if (!FfmpegConverter.CanDo(id, encoders))
+            {
+                report.Add($"SKIP  video {id}: this ffmpeg can't, so the wheel doesn't offer it");
+                Console.WriteLine(report[^1]);
+                continue;
+            }
             Check($"video {id}", () => Produced(Wait(FfmpegConverter.RunAsync(Opt(id), video)), "file"));
+        }
 
         // ---- ZIP and extract ----
         string? zip = null;
