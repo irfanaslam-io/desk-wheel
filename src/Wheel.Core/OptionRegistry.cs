@@ -36,7 +36,6 @@ public static class OptionRegistry
             T("img.resize", "Size…", "Resize to a size you type: 1920x1080, 1080, x720 or 25%", EngineKind.Image, many: true),
             T("img.rotate", "Rotate", "Rotate 90° clockwise", EngineKind.Image),
             T("img.strip", "No EXIF", "Remove metadata (GPS, camera, dates)", EngineKind.Image),
-            T("img.view", "View", "Picture viewer: Next and Back through the folder, zoom, full screen", EngineKind.Window, many: true),
             T("img.edit", "Edit", "Mark up: arrows, text, blur, redact, crop", EngineKind.Image),
             T("img.square", "Square", "Crop to a square from the middle (profile pictures)", EngineKind.Image),
             T("img.flip", "Flip", "Mirror left to right", EngineKind.Image),
@@ -81,7 +80,6 @@ public static class OptionRegistry
             C("vid.to-gif", "GIF", "Animated GIF, 480 px, 12 fps", EngineKind.Ffmpeg, ".gif"),
             C("vid.to-mp3", "MP3", "Extract audio as MP3", EngineKind.Ffmpeg, ".mp3"),
             C("vid.to-m4a", "M4A", "Extract audio as M4A", EngineKind.Ffmpeg, ".m4a"),
-            T("vid.play", "Play", "Desk Wheel's player: every format, subtitles, speed, playlist of the folder", EngineKind.Window, many: true),
             T("vid.trim", "Trim…", "Keep the part you type, like 0:30-1:45 or 1:00- (to the end)", EngineKind.Ffmpeg),
             T("vid.compress", "Compress", "Compress (H.264, CRF 28)", EngineKind.Ffmpeg, ".mp4"),
             T("vid.half", "50%", "Half resolution", EngineKind.Ffmpeg, ".mp4"),
@@ -103,7 +101,6 @@ public static class OptionRegistry
             C("aud.to-flac", "FLAC", "Convert to FLAC (lossless)", EngineKind.Ffmpeg, ".flac"),
             C("aud.to-ogg", "OGG", "Convert to OGG Vorbis", EngineKind.Ffmpeg, ".ogg"),
             C("aud.to-opus", "Opus", "Convert to Opus", EngineKind.Ffmpeg, ".opus"),
-            T("aud.play", "Play", "Desk Wheel's player: the folder as a playlist, equalizer, speed, A-B repeat", EngineKind.Window, many: true),
             T("aud.trim", "Trim…", "Keep the part you type, like 0:30-1:45", EngineKind.Ffmpeg),
             T("aud.join", "Join", "One file from several, in name order", EngineKind.Ffmpeg, many: true, min: 2),
             T("aud.speed", "Speed…", "Faster or slower: type 2, 1.5 or 0.5 (pitch kept)", EngineKind.Ffmpeg),
@@ -219,15 +216,37 @@ public static class OptionRegistry
         new("cap.delay10", "10 s", "Area capture after 10 seconds: time to open a menu", WheelMode.Capture, EngineKind.Capture),
         new("cap.selected", "Files", "Convert the files selected in Finder / Explorer", WheelMode.Capture, EngineKind.Capture),
         new("cap.history", "History", "Recent screenshots and converted files", WheelMode.Capture, EngineKind.Capture),
+        new("cap.player", "Player", "Desk Wheel's media player: drop, open or paste videos and music", WheelMode.Capture, EngineKind.Capture),
         new("cap.disk", "Disk", "What's taking up space: every folder and file by size, with a chart. Open, rename, ZIP or remove them", WheelMode.Capture, EngineKind.Capture),
         new("cap.settings", "Settings", "Folders, formats and other options", WheelMode.Capture, EngineKind.Capture),
     ];
 
     /// <summary>Every option in the catalogue, for counting and tests.</summary>
     public static IEnumerable<WheelOption> All =>
-        ByKind.Values.SelectMany(v => v).Concat(ByExtension.Select(x => x.Option)).Concat(AnySelectionTools).Concat(ActionOptions).Concat(CaptureOptions);
+        ByKind.Values.SelectMany(v => v).Concat(Openers.Values).Concat(ByExtension.Select(x => x.Option)).Concat(AnySelectionTools).Concat(ActionOptions).Concat(CaptureOptions);
 
     public const string MoreId = "nav.more", BackId = "nav.back";
+
+    /// <summary>
+    /// The first choice for files Desk Wheel can show: open them (picture viewer, player, PDF viewer, archive).
+    /// Always first on the Convert and Tools wheels, so opening a file is one move, never a hunt.
+    /// </summary>
+    private static readonly Dictionary<FileKind, WheelOption> Openers = new()
+    {
+        [FileKind.Image] = T("img.view", "View", "Picture viewer: Next and Back through the folder, zoom, full screen", EngineKind.Window, many: true),
+        [FileKind.Video] = T("vid.play", "Play", "Desk Wheel's player: every format, subtitles, speed, playlist of the folder", EngineKind.Window, many: true),
+        [FileKind.Audio] = T("aud.play", "Play", "Desk Wheel's player: the folder as a playlist, equalizer, speed, A-B repeat", EngineKind.Window, many: true),
+        [FileKind.Pdf] = T("pdf.open", "Open", "PDF viewer: pages, zoom, find, print", EngineKind.Window, many: true),
+        [FileKind.Archive] = T("arc.open", "Open", "See what's inside: open, extract all or some, drag files out", EngineKind.Window, many: true),
+    };
+
+    /// <summary>The Open choice for a selection of one kind of file (null for mixed kinds or kinds Desk Wheel doesn't show).</summary>
+    public static WheelOption? OpenerFor(IReadOnlyList<string> paths)
+    {
+        if (paths.Count == 0) return null;
+        var kinds = paths.Select(FileClassifier.Classify).Distinct().ToList();
+        return kinds.Count == 1 && Openers.TryGetValue(kinds[0], out var opener) ? opener : null;
+    }
 
     /// <summary>Pinned options first (in the order they were pinned), then the rest in their usual order.</summary>
     public static IReadOnlyList<WheelOption> WithPinsFirst(IReadOnlyList<WheelOption> options, IReadOnlyList<string> pinned)
@@ -298,6 +317,10 @@ public static class OptionRegistry
         // ZIP-ing things that are already archives only wraps them in another archive.
         if (mode == WheelMode.Tools)
             result.AddRange(AnySelectionTools.Where(o => o.Id is not ("any.zip" or "any.zip-lock") || !kinds.All(k => k == FileKind.Archive)));
+
+        // Open comes first. The PDF viewer draws pages with PDFium; the player and the others need nothing extra.
+        if (mode is WheelMode.Convert or WheelMode.Tools && OpenerFor(paths) is { } open && (open.Id != "pdf.open" || caps.HasPdfium))
+            result.Insert(0, open with { Mode = mode });
 
         return result;
     }

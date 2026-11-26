@@ -59,6 +59,8 @@ internal sealed class PlayerWindow : Window
     private readonly Button _playButton;
     private readonly Button _muteButton;
     private readonly Button _repeatButton;
+    private readonly StackPanel _empty;
+    private readonly StackPanel _recent = new() { Spacing = 2, HorizontalAlignment = HorizontalAlignment.Center };
     private readonly DispatcherTimer _tick = new() { Interval = TimeSpan.FromMilliseconds(250) };
     private readonly DispatcherTimer _hide = new() { Interval = TimeSpan.FromSeconds(2.5) };
     private readonly DispatcherTimer _osdTimer = new() { Interval = TimeSpan.FromSeconds(1.4) };
@@ -73,7 +75,7 @@ internal sealed class PlayerWindow : Window
         _vlc = vlc;
         _snapshotFolder = snapshotFolder;
         _playlist = playlist.ToList();
-        _index = Math.Clamp(start, 0, _playlist.Count - 1);
+        _index = _playlist.Count == 0 ? 0 : Math.Clamp(start, 0, _playlist.Count - 1);
         Ui.Window(this, "Desk Wheel Player");
         Width = 1040;
         Height = 640;
@@ -97,6 +99,7 @@ internal sealed class PlayerWindow : Window
         };
 
         // ---- top: name, playlist and always-on-top
+        var openFiles = Overlay(IconKind.Folder, "Open files… (" + (OperatingSystem.IsMacOS() ? "⌘O" : "Ctrl+O") + ")", () => _ = PickFilesAsync());
         var pin = Overlay(IconKind.Pin, "Keep on top", () => { Topmost = !Topmost; Osd(Topmost ? "Kept on top" : "Not on top"); });
         var listButton = Overlay(IconKind.List, "Playlist (L)", TogglePlaylist);
         _top = new Border
@@ -107,7 +110,7 @@ internal sealed class PlayerWindow : Window
                 StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative), EndPoint = new RelativePoint(0, 1, RelativeUnit.Relative),
                 GradientStops = { new GradientStop(Color.FromArgb(0xB0, 0, 0, 0), 0), new GradientStop(Colors.Transparent, 1) },
             },
-            Child = new DockPanel { Children = { Docked(new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2, Children = { pin, listButton } }, Dock.Right), _title } },
+            Child = new DockPanel { Children = { Docked(new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2, Children = { openFiles, pin, listButton } }, Dock.Right), _title } },
         };
 
         // ---- bottom: seek bar and controls
@@ -178,6 +181,23 @@ internal sealed class PlayerWindow : Window
             Child = _list,
         };
 
+        // ---- nothing playing yet: drop, open or paste
+        var paste = OperatingSystem.IsMacOS() ? "⌘V" : "Ctrl+V";
+        var openButton = Ui.Primary("Open…", () => _ = PickFilesAsync(), IconKind.Folder);
+        openButton.HorizontalAlignment = HorizontalAlignment.Center;
+        _empty = new StackPanel
+        {
+            Spacing = 14, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center, IsVisible = false,
+            Children =
+            {
+                Center(WhiteIcon(IconKind.Play, 56)),
+                new TextBlock { Text = "Drop videos or music here", FontSize = 20, FontWeight = FontWeight.SemiBold, Foreground = Brushes.White, HorizontalAlignment = HorizontalAlignment.Center },
+                new TextBlock { Text = $"or paste copied files with {paste}", FontSize = 13, Foreground = new SolidColorBrush(Color.FromArgb(0xA0, 0xFF, 0xFF, 0xFF)), HorizontalAlignment = HorizontalAlignment.Center },
+                openButton,
+                _recent,
+            },
+        };
+
         _osdBox = new Border
         {
             HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 64, 0, 0),
@@ -185,7 +205,7 @@ internal sealed class PlayerWindow : Window
             Child = _osd, IsVisible = false, IsHitTestVisible = false,
         };
 
-        var stage = new Grid { Background = Brushes.Black, Children = { _video, _audioArt, _top, _bottom, _listPanel, _osdBox } };
+        var stage = new Grid { Background = Brushes.Black, Children = { _video, _audioArt, _empty, _top, _bottom, _listPanel, _osdBox } };
         stage.DoubleTapped += (_, e) => { if (e.Source is Image or Grid or StackPanel) ToggleFullScreen(); };
         stage.PointerPressed += (_, e) =>
         {
@@ -211,18 +231,21 @@ internal sealed class PlayerWindow : Window
         {
             _tick.Start();
             FillPlaylist();
-            Open(_index);
+            if (_playlist.Count > 0) Open(_index); else ShowEmpty();
         };
     }
 
-    private string Current => _playlist[_index];
+    private string Current => _playlist.Count > 0 ? _playlist[_index] : "";
 
     // ---------------------------------------------------------------- playing
 
     /// <summary>Opens playlist item <paramref name="index"/> (where it was left, for long files).</summary>
     private void Open(int index)
     {
+        if (_playlist.Count == 0) { ShowEmpty(); return; }
         Remember();
+        _empty.IsVisible = false;
+        _bottom.IsVisible = true;
         _index = Math.Clamp(index, 0, _playlist.Count - 1);
         _loopA = _loopB = null;
         UpdateRepeat();
@@ -241,6 +264,7 @@ internal sealed class PlayerWindow : Window
         _media = new Media(_vlc, new Uri(path));
         _player.Play(_media);
         old?.Dispose();
+        PlayerMemory.Played(path);
         if (PlayerMemory.Get(path) is { } resume)
         {
             _player.Time = resume;
@@ -248,6 +272,75 @@ internal sealed class PlayerWindow : Window
         }
         ShowControls();
     }
+
+    /// <summary>Nothing to play: the drop / open / paste screen, with what was played recently.</summary>
+    private void ShowEmpty()
+    {
+        _empty.IsVisible = true;
+        _audioArt.IsVisible = false;
+        _video.Source = null;
+        _title.Text = "Desk Wheel Player";
+        _recent.Children.Clear();
+        var recent = PlayerMemory.Recent().Where(File.Exists).Take(6).ToList();
+        if (recent.Count > 0)
+        {
+            _recent.Children.Add(new TextBlock { Text = "RECENT", FontSize = 11, FontWeight = FontWeight.SemiBold, Foreground = new SolidColorBrush(Color.FromArgb(0x80, 0xFF, 0xFF, 0xFF)), Margin = new Thickness(0, 14, 0, 4), HorizontalAlignment = HorizontalAlignment.Center });
+            foreach (var path in recent)
+            {
+                var b = new Button
+                {
+                    Content = Path.GetFileName(path), Background = Brushes.Transparent, Foreground = Brushes.White, HorizontalAlignment = HorizontalAlignment.Center,
+                    Padding = new Thickness(10, 4), MaxWidth = 460, Focusable = false,
+                };
+                ToolTip.SetTip(b, path);
+                b.Click += (_, _) => Add([path]);
+                _recent.Children.Add(b);
+            }
+        }
+        ShowControls();
+    }
+
+    /// <summary>Adds files to the playlist and plays the first of them (one file: its folder comes too).</summary>
+    public void Add(IReadOnlyList<string> paths)
+    {
+        var playable = paths.Where(p => File.Exists(p) && IsPlayable(p)).ToList();
+        if (playable.Count == 0)
+        {
+            Osd("Those aren't videos or music");
+            return;
+        }
+        if (_playlist.Count == 0)
+        {
+            var (list, start) = PlaylistFor(playable);
+            _playlist.AddRange(list);
+            FillPlaylist();
+            Open(start);
+            return;
+        }
+        var at = _playlist.Count;
+        _playlist.AddRange(playable);
+        FillPlaylist();
+        Open(at);
+    }
+
+    private async Task PickFilesAsync()
+    {
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Play", AllowMultiple = true,
+            FileTypeFilter =
+            [
+                new FilePickerFileType("Videos and music") { Patterns = MediaPatterns() },
+                new FilePickerFileType("All files") { Patterns = ["*"] },
+            ],
+        });
+        var paths = files.Select(f => f.TryGetLocalPath()).OfType<string>().ToList();
+        if (paths.Count > 0) Add(paths);
+    }
+
+    private static string[] MediaPatterns() =>
+        ["*.mp4", "*.mkv", "*.mov", "*.avi", "*.webm", "*.wmv", "*.m4v", "*.flv", "*.3gp", "*.ts", "*.mts", "*.mpg", "*.mpeg",
+         "*.mp3", "*.m4a", "*.aac", "*.wav", "*.flac", "*.ogg", "*.opus", "*.wma", "*.aiff", "*.aif"];
 
     private void Go(int step, bool atEnd = false)
     {
@@ -268,6 +361,7 @@ internal sealed class PlayerWindow : Window
 
     private void TogglePlay()
     {
+        if (_playlist.Count == 0) return;
         if (_player.State is VLCState.Ended or VLCState.Stopped or VLCState.Error)
             Open(_index);
         else
@@ -500,7 +594,8 @@ internal sealed class PlayerWindow : Window
 
     private void ShowControls()
     {
-        _top.IsVisible = _bottom.IsVisible = true;
+        _top.IsVisible = true;
+        _bottom.IsVisible = _playlist.Count > 0;
         Cursor = Cursor.Default;
         _hide.Stop();
         _hide.Start();
@@ -527,6 +622,21 @@ internal sealed class PlayerWindow : Window
     {
         if (_listPanel.IsVisible && _list.IsKeyboardFocusWithin && e.Key is Key.Up or Key.Down or Key.Enter) return;
         var shift = e.KeyModifiers.HasFlag(KeyModifiers.Shift);
+        var command = e.KeyModifiers.HasFlag(KeyModifiers.Meta) || e.KeyModifiers.HasFlag(KeyModifiers.Control);
+        if (command && e.Key == Key.V)
+        {
+            if (_platform.ReadClipboard()?.Files is { Length: > 0 } copied) Add(copied);
+            else Osd("Copy a video or song in " + (OperatingSystem.IsMacOS() ? "Finder" : "File Explorer") + " first");
+            e.Handled = true;
+            return;
+        }
+        if (command && e.Key == Key.O)
+        {
+            _ = PickFilesAsync();
+            e.Handled = true;
+            return;
+        }
+        if (_playlist.Count == 0 && e.Key != Key.Escape) return;
         switch (e.Key)
         {
             case Key.Space or Key.K or Key.MediaPlayPause: TogglePlay(); break;
@@ -569,13 +679,8 @@ internal sealed class PlayerWindow : Window
 
     private void OnDrop(object? sender, DragEventArgs e)
     {
-        var dropped = e.Data.GetFiles()?.Select(f => f.TryGetLocalPath()).OfType<string>()
-            .Where(IsPlayable).ToList();
-        if (dropped is not { Count: > 0 }) return;
-        var at = _playlist.Count;
-        _playlist.AddRange(dropped);
-        FillPlaylist();
-        Open(at);
+        var dropped = e.Data.GetFiles()?.Select(f => f.TryGetLocalPath()).OfType<string>().ToList();
+        if (dropped is { Count: > 0 }) Add(dropped);
     }
 
     // ---------------------------------------------------------------- where you left off
@@ -824,6 +929,30 @@ internal static class PlayerMemory
     }
 
     public static long? Get(string path) => Positions.TryGetValue(path, out var t) ? t : null;
+
+    private static readonly string RecentFile = Path.Combine(Path.GetDirectoryName(MediaEngine.Packs.Root)!, "player-recent.json");
+    private static List<string>? _recent;
+
+    /// <summary>Recently played files, newest first.</summary>
+    public static IReadOnlyList<string> Recent()
+    {
+        if (_recent is not null) return _recent;
+        try { _recent = File.Exists(RecentFile) ? JsonSerializer.Deserialize<List<string>>(File.ReadAllText(RecentFile)) ?? [] : []; }
+        catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException) { _recent = []; }
+        return _recent;
+    }
+
+    public static void Played(string path)
+    {
+        var list = Recent().Where(p => !string.Equals(p, path, StringComparison.OrdinalIgnoreCase)).Prepend(path).Take(20).ToList();
+        _recent = list;
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(RecentFile)!);
+            File.WriteAllText(RecentFile, JsonSerializer.Serialize(list));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Log.Write(ex); }
+    }
 
     public static void Set(string path, long ms)
     {

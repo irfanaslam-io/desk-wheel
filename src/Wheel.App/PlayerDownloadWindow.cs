@@ -23,7 +23,7 @@ namespace Wheel.App;
 internal sealed class PlayerDownloadWindow : Window
 {
     private readonly IPlatform _platform;
-    private readonly string _file;
+    private readonly string? _file;
     private readonly Action _play;
     private readonly ProgressBar _progress = new() { Minimum = 0, Maximum = 1, Height = 6, IsVisible = false };
     private readonly TextBlock _status = Ui.Caption("");
@@ -32,7 +32,7 @@ internal sealed class PlayerDownloadWindow : Window
     private readonly Border _thumb;
     private CancellationTokenSource? _cts;
 
-    public PlayerDownloadWindow(IPlatform platform, string file, Action play)
+    public PlayerDownloadWindow(IPlatform platform, string? file, Action play)
     {
         _platform = platform;
         _file = file;
@@ -48,21 +48,23 @@ internal sealed class PlayerDownloadWindow : Window
         var system = OperatingSystem.IsMacOS() ? "Open in QuickTime" : "Open in the system player";
         _download = Ui.Primary(download is null ? "Not available here" : $"Download and play ({DiskScanner.FormatSize(download.Size)})", () => _ = DownloadAsync(), IconKind.Save);
         _download.IsVisible = download is not null;
-        _system = Ui.Secondary(system, () => { _platform.OpenFile(_file); Close(); }, IconKind.Eye);
+        _system = Ui.Secondary(system, () => { if (_file is not null) _platform.OpenFile(_file); Close(); }, IconKind.Eye);
+        _system.IsVisible = file is not null;
         var cancel = Ui.Ghost("Not now", () => { _cts?.Cancel(); Close(); });
 
         _thumb = new Border
         {
             Height = 220, CornerRadius = new CornerRadius(10), ClipToBounds = true, Background = Brushes.Black,
-            Child = Ui.Icon(FileClassifier.Classify(file) == FileKind.Audio ? IconKind.Music : IconKind.Play, 48, new SolidColorBrush(Color.FromArgb(0x90, 0xFF, 0xFF, 0xFF))),
+            Child = Ui.Icon(file is not null && FileClassifier.Classify(file) == FileKind.Audio ? IconKind.Music : IconKind.Play, 48, new SolidColorBrush(Color.FromArgb(0x90, 0xFF, 0xFF, 0xFF))),
         };
         ((Control)_thumb.Child!).HorizontalAlignment = HorizontalAlignment.Center;
         ((Control)_thumb.Child!).VerticalAlignment = VerticalAlignment.Center;
-        var name = new TextBlock { Text = Path.GetFileName(file), FontWeight = FontWeight.SemiBold, Foreground = Ui.Text, TextTrimming = TextTrimming.CharacterEllipsis };
+        var name = new TextBlock { Text = file is null ? "Desk Wheel Player" : Path.GetFileName(file), FontWeight = FontWeight.SemiBold, Foreground = Ui.Text, TextTrimming = TextTrimming.CharacterEllipsis };
         var detail = Ui.Caption("", wrap: false);
 
         var explain = Ui.Body(download is null
-            ? $"Desk Wheel's player isn't available for this computer yet. You can {char.ToLowerInvariant(system[0])}{system[1..]} instead."
+            ? file is null ? "Desk Wheel's player isn't available for this computer yet."
+                : $"Desk Wheel's player isn't available for this computer yet. You can {char.ToLowerInvariant(system[0])}{system[1..]} instead."
             : "Desk Wheel's player plays every kind of video and music (MKV, MP4, AVI, WebM, FLAC…) with subtitles, " +
               "speed, equalizer and more. It needs its engine first: a one-time download from Desk Wheel's GitHub " +
               $"page ({DiskScanner.FormatSize(download.Size)}, VLC by VideoLAN, free and open source). Remove it any time in Settings.");
@@ -91,6 +93,7 @@ internal sealed class PlayerDownloadWindow : Window
     /// <summary>The file's length and a frame from it, with the ffmpeg Desk Wheel already has.</summary>
     private async Task DescribeAsync(TextBlock detail)
     {
+        if (_file is null) return;
         try
         {
             var size = DiskScanner.FormatSize(new FileInfo(_file).Length);

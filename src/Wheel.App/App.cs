@@ -461,16 +461,26 @@ internal sealed class App : Application, INotifier, IScreenToolHost
         _history.Activate();
     }
 
+    private PlayerWindow? _playerWindow;
+
     /// <summary>
-    /// The media player for these files (one file: its whole folder as the playlist). The first time, its engine
-    /// is offered as a download (or the file opens in the system's player).
+    /// The media player for these files (one file: its whole folder as the playlist), or empty, ready for a drop.
+    /// One player: files opened while it's open join its playlist. The first time, its engine is offered as a
+    /// download (or the file opens in the system's player).
     /// </summary>
     private void OpenPlayer(System.Collections.Generic.IReadOnlyList<string> paths)
     {
         _wheel?.CloseWheel();
-        var (playlist, start) = PlayerWindow.PlaylistFor(paths);
-        if (playlist.Count == 0) return;
         Usage.Screen("player");
+        if (_playerWindow is { } open)
+        {
+            if (paths.Count > 0) open.Add(paths);
+            _platform.BringToFront();
+            open.Activate();
+            return;
+        }
+        var (playlist, start) = PlayerWindow.PlaylistFor(paths);
+        if (paths.Count > 0 && playlist.Count == 0) return;
         void Play()
         {
             var vlc = MediaEngine.Get(out var problem);
@@ -480,6 +490,8 @@ internal sealed class App : Application, INotifier, IScreenToolHost
                 return;
             }
             var window = new PlayerWindow(_platform, vlc, playlist, start, CaptureFolder);
+            window.Closed += (_, _) => { if (ReferenceEquals(_playerWindow, window)) _playerWindow = null; };
+            _playerWindow = window;
             _platform.BringToFront();
             window.Show();
             window.Activate();
@@ -489,7 +501,7 @@ internal sealed class App : Application, INotifier, IScreenToolHost
             Play();
             return;
         }
-        var prompt = new PlayerDownloadWindow(_platform, playlist[start], Play);
+        var prompt = new PlayerDownloadWindow(_platform, playlist.Count > 0 ? playlist[start] : null, Play);
         _platform.BringToFront();
         prompt.Show();
         prompt.Activate();
@@ -579,6 +591,7 @@ internal sealed class App : Application, INotifier, IScreenToolHost
             case "cap.settings": OpenSettings(); break;
             case "cap.history": OpenHistory(); break;
             case "cap.disk": OpenDisk(null); break;
+            case "cap.player": OpenPlayer([]); break;
             case "cap.clipboard": OpenClipboard(); break;
             case "cap.color": _ = Tools.PickColorAsync(AnyWindow()); break;
             case "cap.qr": _ = Tools.ScanQrAsync(); break;
@@ -842,6 +855,10 @@ internal sealed class App : Application, INotifier, IScreenToolHost
             toolItem.Click += (_, _) => run();
             menu.Items.Add(toolItem);
         }
+
+        var playerItem = new NativeMenuItem("Player…");
+        playerItem.Click += (_, _) => OpenPlayer([]);
+        menu.Items.Add(playerItem);
 
         var diskItem = new NativeMenuItem("Disk space…");
         diskItem.Click += (_, _) => OpenDisk(null);

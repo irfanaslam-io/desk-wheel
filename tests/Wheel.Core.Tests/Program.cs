@@ -88,13 +88,13 @@ Test("a folder works on its most common kind of file, skipping hidden files", ()
 
 Test("archives alone get no ZIP tool; mixed with other files they do", () =>
 {
-    Eq("any.rename", string.Join(",", Ids(OptionRegistry.GetOptions(WheelMode.Tools, ["a.zip"], caps))), "zip of a zip: only Rename");
+    Eq("arc.open,any.rename", string.Join(",", Ids(OptionRegistry.GetOptions(WheelMode.Tools, ["a.zip"], caps))), "zip: Open and Rename, no ZIP of a zip");
     True(Ids(OptionRegistry.GetOptions(WheelMode.Tools, ["a.zip", "b.png"], caps)).Contains("any.zip"), "mixed zip missing");
 });
 
 Test("ffmpeg options vanish when ffmpeg is missing", () =>
 {
-    Eq(0, OptionRegistry.GetOptions(WheelMode.Convert, ["clip.mp4"], noFfmpeg).Count, "video convert count");
+    Eq("vid.play", string.Join(",", Ids(OptionRegistry.GetOptions(WheelMode.Convert, ["clip.mp4"], noFfmpeg))), "without ffmpeg only Play (it needs no ffmpeg)");
     var img = Ids(OptionRegistry.GetOptions(WheelMode.Convert, ["a.png"], noFfmpeg));
     True(!img.Contains("img.to-avif"), "AVIF shown without ffmpeg");
     True(img.Contains("img.to-jpg") && img.Contains("img.to-webp"), "built-in image option hidden by mistake");
@@ -125,7 +125,7 @@ Test("Text options show only when text recognition is available", () =>
     var ocr = caps with { HasOcr = true };
     True(!Ids(OptionRegistry.GetOptions(WheelMode.Capture, Array.Empty<string>(), caps)).Contains("cap.text"), "cap.text without OCR");
     True(Ids(OptionRegistry.GetOptions(WheelMode.Capture, Array.Empty<string>(), ocr)).Contains("cap.text"), "cap.text missing");
-    Eq(18, OptionRegistry.GetOptions(WheelMode.Capture, Array.Empty<string>(), ocr).Count, "capture count");
+    Eq(19, OptionRegistry.GetOptions(WheelMode.Capture, Array.Empty<string>(), ocr).Count, "capture count");
     Eq("cap.area,cap.window,cap.full,cap.scroll,cap.text,cap.clipboard,cap.record,nav.more", string.Join(",", Ids(OptionRegistry.Page(OptionRegistry.GetOptions(WheelMode.Capture, Array.Empty<string>(), ocr), 0, WheelMode.Capture))), "first page of the Screenshot wheel");
     var tools = Ids(OptionRegistry.GetOptions(WheelMode.Tools, ["a.png"], ocr));
     True(tools.Contains("img.ocr") && tools.Contains("any.zip"), "image Text tool or ZIP missing");
@@ -1947,6 +1947,20 @@ TestAsync("the published media player packs match the sizes and checksums built 
     var folder = manager.FolderFor(media);
     True(File.Exists(Path.Combine(folder, "libvlc.dylib")) && File.Exists(Path.Combine(folder, "LICENSE-LGPL-2.1.txt")), "unpacked");
     True(Directory.GetFiles(Path.Combine(folder, "plugins")).Length > 250, "plugins");
+});
+
+Test("Open comes first for files Desk Wheel can show, on Convert and Tools", () =>
+{
+    Eq("img.view", Ids(OptionRegistry.GetOptions(WheelMode.Convert, ["a.jpg"], caps))[0], "pictures: View");
+    Eq("img.view", Ids(OptionRegistry.GetOptions(WheelMode.Tools, ["a.jpg", "b.png"], caps))[0], "several pictures: View");
+    Eq("vid.play", Ids(OptionRegistry.GetOptions(WheelMode.Convert, ["a.mkv"], caps))[0], "video: Play");
+    Eq("aud.play", Ids(OptionRegistry.GetOptions(WheelMode.Convert, ["a.flac"], caps))[0], "music: Play");
+    Eq("pdf.open", Ids(OptionRegistry.GetOptions(WheelMode.Convert, ["a.pdf"], caps with { HasPdfium = true }))[0], "PDF: Open");
+    True(!Ids(OptionRegistry.GetOptions(WheelMode.Convert, ["a.pdf"], caps)).Contains("pdf.open"), "no PDF viewer without PDFium");
+    Eq("arc.open", Ids(OptionRegistry.GetOptions(WheelMode.Convert, ["a.rar"], caps))[0], "archive: Open");
+    True(!Ids(OptionRegistry.GetOptions(WheelMode.Convert, ["a.jpg", "b.mp4"], caps)).Contains("img.view"), "mixed kinds: no Open");
+    Eq(1, Ids(OptionRegistry.GetOptions(WheelMode.Tools, ["a.mp4"], caps)).Count(i => i == "vid.play"), "Play once");
+    Eq(WheelMode.Convert, OptionRegistry.GetOptions(WheelMode.Convert, ["a.mp4"], caps)[0].Mode, "takes the wheel's mode");
 });
 
 var failed = 0;
