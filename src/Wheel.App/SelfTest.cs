@@ -196,6 +196,27 @@ internal static class SelfTest
             return Produced(Wait(MediaEditor.AddSubtitlesAsync([mkv, srt])), "video");
         });
 
+        // ---- media player: the real pack for this computer, downloaded from GitHub, decoding real video ----
+        if (Wheel.Core.Packs.KnownPacks.MediaPlayer.ForThisComputer is null)
+        {
+            report.Add($"SKIP  media player: no pack for {Wheel.Core.Packs.PackManager.CurrentPlatform}");
+            Console.WriteLine(report[^1]);
+        }
+        else
+        {
+            Check("media player pack: download, checksum, load, play", () =>
+            {
+                var packs = new Wheel.Core.Packs.PackManager(Path.Combine(folder, "packs"));
+                var pack = Wheel.Core.Packs.KnownPacks.MediaPlayer;
+                Task.Run(() => packs.InstallAsync(pack)).GetAwaiter().GetResult();
+                var vlc = MediaEngine.LoadFrom(packs.FolderFor(pack), out var problem);
+                if (vlc is null) return problem ?? "LibVLC didn't load";
+                var (frames, length, state) = MediaEngine.Probe(vlc, video);
+                Console.WriteLine($"      LibVLC {vlc.Version}: {frames} frames, {length} ms, {state}");
+                return frames > 0 ? null : $"no video frames ({state}, length {length} ms)";
+            });
+        }
+
         // ---- ZIP and extract ----
         string? zip = null;
         Check("ZIP files", () =>

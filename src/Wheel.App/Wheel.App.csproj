@@ -12,7 +12,7 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <!-- Lets the Windows "Send to" shortcut use COM late binding. -->
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
-    <Version>0.1.1</Version>
+    <Version>0.2.0</Version>
     <Product>Desk Wheel</Product>
     <ApplicationIcon>..\..\platform\icons\AppIcon.ico</ApplicationIcon>
     <Company>irfanaslam.io</Company>
@@ -25,6 +25,7 @@
   <ItemGroup>
     <!-- Avalonia brings SkiaSharp, which the image engine uses directly. -->
     <PackageReference Include="Avalonia" Version="11.3.0" />
+    <PackageReference Include="LibVLCSharp" Version="3.10.2" />
     <PackageReference Include="Avalonia.Desktop" Version="11.3.0" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.0" />
     <!-- Text shaping for the editor's Text tool (joined Arabic letters, right-to-left runs). Same 2.88 line as Avalonia's SkiaSharp. -->
@@ -80,4 +81,10 @@
     <!-- Updates are installed only when their feed is signed by the matching private key (kept in CI secrets). -->
     <EmbeddedResource Include="..\..\platform\update-public-key.pem" LogicalName="DeskWheel.update-public-key.pem" Condition="Exists('..\..\platform\update-public-key.pem')" />
   </ItemGroup>
+  <!-- LibVLCSharp (LGPL-2.1+) stays a separate file beside the app, so it can be replaced, as the LGPL asks. -->
+  <Target Name="KeepLibVlcSharpSeparate" AfterTargets="ComputeResolvedFilesToPublishList">
+    <ItemGroup>
+      <ResolvedFileToPublish Update="@(ResolvedFileToPublish)" Condition="'%(Filename)' == 'LibVLCSharp'" ExcludeFromSingleFile="true" />
+    </ItemGroup>
+  </Target>
 </Project>

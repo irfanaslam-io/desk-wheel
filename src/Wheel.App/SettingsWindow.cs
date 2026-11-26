@@ -302,7 +302,70 @@ internal sealed class SettingsWindow : Window
             Group("Automatic",
                 Row("Check for updates automatically", "Twice a day at most. You're always asked before anything is installed.",
                     Toggle(_settings.AutoUpdate, v => _settings.AutoUpdate = v))),
-            Ui.Caption("Updates install over the current version: no need to uninstall, and your settings, history and clipboard are kept. Each update is checked against Desk Wheel's signature before it's installed."));
+            Ui.Caption("Updates install over the current version: no need to uninstall, and your settings, history and clipboard are kept. Each update is checked against Desk Wheel's signature before it's installed."),
+            Group("Optional downloads", MediaPlayerRow()));
+    }
+
+    /// <summary>The media player's engine: downloaded the first time a video or song is played, removable here.</summary>
+    private Control MediaPlayerRow()
+    {
+        var pack = MediaEngine.Pack;
+        var caption = Ui.Caption("");
+        var button = Ui.Secondary("", () => { });
+        void Refresh()
+        {
+            var installed = MediaEngine.Packs.IsInstalled(pack);
+            var download = pack.ForThisComputer;
+            caption.Text = installed
+                ? $"Downloaded · {Wheel.Core.Disk.DiskScanner.FormatSize(MediaEngine.Packs.SizeOnDisk(pack))} · VLC {pack.Version.Split('-')[0]} by VideoLAN (LGPL)"
+                : download is null ? "Not available for this computer yet."
+                : $"Not downloaded. It downloads ({Wheel.Core.Disk.DiskScanner.FormatSize(download.Size)}) the first time you play a video or song, after asking.";
+            button.Content = installed ? "Remove" : "Download";
+            button.IsVisible = installed || download is not null;
+        }
+        button.Click += async (_, _) =>
+        {
+            button.IsEnabled = false;
+            try
+            {
+                if (MediaEngine.Packs.IsInstalled(pack))
+                {
+                    try { MediaEngine.Packs.Remove(pack); }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                    {
+                        Log.Write(ex);
+                        caption.Text = "In use: it will be removed the next time Desk Wheel starts.";
+                        return;
+                    }
+                }
+                else
+                {
+                    var progress = new Progress<Wheel.Core.Packs.PackProgress>(p =>
+                        caption.Text = p.Unpacking ? "Unpacking…" : $"Downloading… {Wheel.Core.Disk.DiskScanner.FormatSize(p.Done)} of {Wheel.Core.Disk.DiskScanner.FormatSize(p.Total)}");
+                    try { await MediaEngine.Packs.InstallAsync(pack, progress); }
+                    catch (Exception ex) when (ex is IOException or System.Net.Http.HttpRequestException or InvalidOperationException)
+                    {
+                        Log.Write(ex);
+                        caption.Text = ex.Message;
+                        return;
+                    }
+                }
+                Refresh();
+            }
+            finally
+            {
+                button.IsEnabled = true;
+            }
+        };
+        Refresh();
+        var text = new StackPanel { Spacing = 3, VerticalAlignment = VerticalAlignment.Center, Children = { Ui.Body("Media player engine", wrap: false), caption } };
+        button.VerticalAlignment = VerticalAlignment.Center;
+        button.Margin = new Thickness(20, 0, 0, 0);
+        var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), Margin = new Thickness(0, 12), MinHeight = 32 };
+        row.Children.Add(text);
+        Grid.SetColumn(button, 1);
+        row.Children.Add(button);
+        return row;
     }
 
     private string UpdateStatus()

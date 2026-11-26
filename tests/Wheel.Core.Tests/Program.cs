@@ -1531,7 +1531,8 @@ Test("Speed… takes 2, 0.5x, 150%; atempo is chained beyond 0.5–2", () =>
 Test("video tools: menu order, recipes never upscale, subtitle pair tools only for one video + one SRT", () =>
 {
     var tools = Ids(OptionRegistry.GetOptions(WheelMode.Tools, ["clip.mp4"], caps));
-    Eq("vid.trim", tools[0], "Trim first");
+    Eq("vid.play", tools[0], "Play first");
+    Eq("vid.trim", tools[1], "then Trim");
     foreach (var id in new[] { "vid.speed", "vid.rotate", "vid.flip", "vid.720", "vid.1080", "vid.sheet" })
         True(tools.Contains(id), id + " missing");
     True(!tools.Contains("vid.join"), "Join needs two");
@@ -1872,6 +1873,82 @@ TestAsync("disk chart: wedges fill the turn, small items grouped, free space in 
     True(SunburstLayout.HitTest(withFree, 1, 0.75)!.IsFreeSpace, "hit free space");
 });
 
+// ---------------------------------------------------------------- optional downloads (packs)
+
+TestAsync("packs: download, check, unpack; wrong or oversized files and escaping zips are thrown away", async () =>
+{
+    var dir = Dir("packs");
+    byte[] Zip(params (string Name, string Text)[] entries)
+    {
+        using var ms = new MemoryStream();
+        using (var z = new System.IO.Compression.ZipArchive(ms, System.IO.Compression.ZipArchiveMode.Create, leaveOpen: true))
+            foreach (var (name, text) in entries)
+            {
+                using var w = new StreamWriter(z.CreateEntry(name).Open());
+                w.Write(text);
+            }
+        return ms.ToArray();
+    }
+    var good = Zip(("libvlc.dll", "engine"), ("plugins/codec/libavcodec_plugin.dll", "codec"));
+    var escaping = Zip(("../outside.txt", "nope"));
+    var files = new Dictionary<string, byte[]> { ["/good.zip"] = good, ["/escape.zip"] = escaping };
+
+    string Sha(byte[] b) => Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(b)).ToLowerInvariant();
+    var url = "https://example.test";
+    var pack = new Wheel.Core.Packs.PackInfo("media-player", "Test", "3.0.24-1", "", new Dictionary<string, Wheel.Core.Packs.PackFile>());
+    var manager = new Wheel.Core.Packs.PackManager(Path.Combine(dir, "packs"),
+        new HttpClient(new FakeHttp(u => files.GetValueOrDefault(new Uri(u).AbsolutePath))));
+
+    var progress = new List<Wheel.Core.Packs.PackProgress>();
+    await manager.InstallAsync(pack, new SyncProgress<Wheel.Core.Packs.PackProgress>(progress.Add), file: new(url + "/good.zip", good.Length, Sha(good)));
+    True(manager.IsInstalled(pack), "installed");
+    Eq("codec", File.ReadAllText(Path.Combine(manager.FolderFor(pack), "plugins", "codec", "libavcodec_plugin.dll")), "unpacked");
+    True(progress.Count > 0 && progress[^1].Unpacking, "progress reported");
+    True(manager.SizeOnDisk(pack) > 0, "size on disk");
+
+    async Task<string> Fails(Wheel.Core.Packs.PackFile f)
+    {
+        try { await manager.InstallAsync(pack, file: f); return "no error"; }
+        catch (IOException ex) { return ex.Message; }
+    }
+    manager.Remove(pack);
+    True(!manager.IsInstalled(pack) && !Directory.Exists(manager.FolderFor(pack)), "removed");
+    True((await Fails(new(url + "/good.zip", good.Length, new string('0', 64)))).Contains("checksum"), "wrong checksum refused");
+    True((await Fails(new(url + "/good.zip", good.Length - 10, Sha(good)))).Contains("bigger"), "too big refused");
+    True((await Fails(new(url + "/good.zip", good.Length + 10, Sha(good)))).Contains("before the end"), "too short refused");
+    True((await Fails(new(url + "/escape.zip", escaping.Length, Sha(escaping)))).Contains("outside"), "zip slip refused");
+    True((await Fails(new(url + "/missing.zip", 10, Sha(good)))).Contains("404"), "missing file");
+    True(!manager.IsInstalled(pack) && !File.Exists(Path.Combine(dir, "outside.txt")), "nothing kept after failures");
+    Eq(0, Directory.GetFileSystemEntries(Path.Combine(dir, "packs")).Length, "no leftovers");
+
+    // An interrupted earlier download, and a folder without its "complete" mark, are cleared at start.
+    Directory.CreateDirectory(Path.Combine(dir, "packs", ".media-player-abc"));
+    Directory.CreateDirectory(Path.Combine(dir, "packs", "media-player-3.0.24-1"));
+    manager.Tidy();
+    Eq(0, Directory.GetFileSystemEntries(Path.Combine(dir, "packs")).Length, "tidied");
+});
+
+TestAsync("the published media player packs match the sizes and checksums built into the app", async () =>
+{
+    var media = Wheel.Core.Packs.KnownPacks.MediaPlayer;
+    Eq("mac-arm64,win-arm64,win-x64", string.Join(",", media.Files.Keys.OrderBy(x => x, StringComparer.Ordinal)), "platforms");
+    foreach (var f in media.Files.Values) True(f.Size > 10_000_000 && f.Sha256.Length == 64, "pinned: " + f.Url);
+    // The smallest one, downloaded for real (skipped without internet).
+    var manager = new Wheel.Core.Packs.PackManager(Dir("real-pack"));
+    try
+    {
+        await manager.InstallAsync(media, file: media.Files["mac-arm64"]);
+    }
+    catch (HttpRequestException ex)
+    {
+        Console.WriteLine($"        (no internet: skipped, {ex.Message})");
+        return;
+    }
+    var folder = manager.FolderFor(media);
+    True(File.Exists(Path.Combine(folder, "libvlc.dylib")) && File.Exists(Path.Combine(folder, "LICENSE-LGPL-2.1.txt")), "unpacked");
+    True(Directory.GetFiles(Path.Combine(folder, "plugins")).Length > 250, "plugins");
+});
+
 var failed = 0;
 foreach (var (name, body) in tests)
 {
@@ -1901,4 +1978,10 @@ sealed class FakeHttp(Func<string, byte[]?> respond) : HttpMessageHandler
             ? new HttpResponseMessage(System.Net.HttpStatusCode.NotFound)
             : new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = new ByteArrayContent(body) });
     }
+}
+
+/// <summary>Progress that reports straight away (Progress&lt;T&gt; posts later, after the test has looked).</summary>
+sealed class SyncProgress<T>(Action<T> report) : IProgress<T>
+{
+    public void Report(T value) => report(value);
 }

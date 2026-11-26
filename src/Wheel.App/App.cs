@@ -53,6 +53,12 @@ internal sealed class App : Application, INotifier, IScreenToolHost
                 catch (Exception ex) when (ex is IOException or InvalidOperationException) { Log.Write(ex); }
             });
         _jobs = new JobRunner(this, _platform);
+        // Interrupted downloads, and a pack removed while it was in use, are cleared now.
+        _ = Task.Run(() =>
+        {
+            try { MediaEngine.Packs.Tidy(); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Log.Write(ex); }
+        });
 
         if (Program.View is { } view)
             StartViewer(view);
@@ -455,6 +461,40 @@ internal sealed class App : Application, INotifier, IScreenToolHost
         _history.Activate();
     }
 
+    /// <summary>
+    /// The media player for these files (one file: its whole folder as the playlist). The first time, its engine
+    /// is offered as a download (or the file opens in the system's player).
+    /// </summary>
+    private void OpenPlayer(System.Collections.Generic.IReadOnlyList<string> paths)
+    {
+        _wheel?.CloseWheel();
+        var (playlist, start) = PlayerWindow.PlaylistFor(paths);
+        if (playlist.Count == 0) return;
+        Usage.Screen("player");
+        void Play()
+        {
+            var vlc = MediaEngine.Get(out var problem);
+            if (vlc is null)
+            {
+                Notify("The player didn't start", problem ?? "", error: true);
+                return;
+            }
+            var window = new PlayerWindow(_platform, vlc, playlist, start, CaptureFolder);
+            _platform.BringToFront();
+            window.Show();
+            window.Activate();
+        }
+        if (MediaEngine.IsReady)
+        {
+            Play();
+            return;
+        }
+        var prompt = new PlayerDownloadWindow(_platform, playlist[start], Play);
+        _platform.BringToFront();
+        prompt.Show();
+        prompt.Activate();
+    }
+
     /// <summary>The Disk Space window, scanning the given folder (the home folder if none).</summary>
     private void OpenDisk(string? folder)
     {
@@ -689,6 +729,8 @@ internal sealed class App : Application, INotifier, IScreenToolHost
                 OpenRename(paths);
             else if (option.Id == "img.view")
                 OpenViewer(paths);
+            else if (option.Id is "vid.play" or "aud.play")
+                OpenPlayer(paths);
             else if (option.Id == "act.disk")
                 OpenDisk(paths.Count == 1 && System.IO.Directory.Exists(paths[0]) ? paths[0] : System.IO.Path.GetDirectoryName(paths[0]));
             else

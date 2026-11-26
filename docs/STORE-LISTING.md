@@ -44,8 +44,8 @@ Expected rating: **3+ / Everyone**.
 
 Upload both files (drag them onto the page):
 
-- `DeskWheel-0.1.1-win-x64.msix`
-- `DeskWheel-0.1.1-win-arm64.msix`
+- `DeskWheel-0.2.0-win-x64.msix`
+- `DeskWheel-0.2.0-win-arm64.msix`
 
 Device families: tick **Windows 10/11 Desktop** only. Leave *Let Microsoft decide whether to make this app
 available to future device families* ticked.
@@ -63,11 +63,14 @@ Everything runs on your computer. No uploads, no account, no ads, no limits.
 
 WHAT IT DOES
 • Images: PNG, JPG, WebP, AVIF, ICO, TIFF, GIF and BMP; compress, resize, rotate, remove photo location data, make app icon sets, combine pictures into a PDF.
-• Video and audio: MP4, WebM, MKV, MOV, GIF, MP3, M4A, WAV, FLAC, OGG and Opus; compress, mute, take a frame.
-• PDF: pages to images or text, merge, split, rotate, page numbers, compress, add or remove a password.
+• Video and audio: MP4, WebM, MKV, MOV, GIF, MP3, M4A, WAV, FLAC, OGG and Opus; trim, join, change speed, rotate, 720p and 1080p, compress, mute, thumbnail sheets, add or burn in subtitles.
+• Media player for every format, with subtitles, speed, equalizer, A-B repeat and playlists (its engine, VLC by VideoLAN, is an optional download, fetched only when you first play something and say yes).
+• PDF: pages to images or text, merge, split, rotate, page numbers, compress, watermark, add or remove a password, and make scanned PDFs searchable (English and Arabic).
+• Archives like WinRAR: open RAR, 7z, ISO, TAR, GZ, BZ2 and XZ, and make password-protected ZIPs.
+• Disk space: see what's taking up space in a list and ring chart, then open, ZIP or move things to the Recycle Bin.
 • Word, Excel and PowerPoint to PDF, using Microsoft Office or the free LibreOffice if you have one.
 • Screenshots: area, window or full screen, with pen, arrows, boxes, highlights, text, numbered steps, blur and redact, right where you captured.
-• Copy text from anything on screen (OCR), read QR codes, pick colours, record part of the screen.
+• Copy text from anything on screen (OCR), scrolling screenshots, a pixel ruler, read QR codes, pick colours, record part of the screen as MP4 or GIF.
 • Clipboard history with search and pins.
 • Picture viewer: Next and Back through a whole folder, zoom and full screen.
 • Readers for Markdown and JSON files, plus JSON format, minify and convert to CSV.
@@ -97,8 +100,13 @@ Copy text from anything on the screen (OCR)
 Clipboard history with search and pins
 Picture viewer with Next and Back through a folder
 PDF tools: merge, split, rotate, page numbers, compress and passwords
+Make scanned PDFs searchable (English and Arabic)
+Media player for every format (optional engine download)
+Trim, join and speed up videos and songs
+Open RAR, 7z and ISO; make password-protected ZIPs
+Disk space: find what's filling your drive and clean it up
 Word, Excel and PowerPoint to PDF
-Screen recording, colour picker and QR codes
+Screen recording, GIFs, scrolling screenshots, ruler, colour picker and QR codes
 Readable views for Markdown and JSON files
 Works offline: nothing is uploaded, no account needed
 Light and dark themes that follow Windows
@@ -177,7 +185,9 @@ How to test:
 4. Right-click a picture in File Explorer > Open with > Desk Wheel: the picture viewer opens; the Left and Right arrow keys move through the folder.
 5. Right-click the tray icon for Settings, History and Quit.
 
-No account, sign-in or internet connection is needed. The Store version does not update itself; updates come from the Store. Word, Excel and PowerPoint to PDF needs Microsoft Office or LibreOffice installed; without either, those choices are not shown.
+6. Optional add-on download (Store Policy 10.1.5): drag a video (for example an .mp4) onto the orange button, click the centre of the wheel until it says "Tools", and choose "Play". The first time, a window explains that the player needs its engine and asks; only after "Download and play" is clicked does Desk Wheel download it. The engine is LibVLC 3.0.24 by VideoLAN (LGPL), only libraries, no executables or installers, from this product's own GitHub releases page (github.com/irfanaslam-io/desk-wheel, release "packs-media-player-3.0.24-1"). Each file's size and SHA-256 are built into the app, and anything that doesn't match is deleted unused. It is stored in the app's local data folder and can be removed in Settings > Updates > Optional downloads. Everything else works without it ("Open in the system player" is offered instead).
+
+No account, sign-in or internet connection is needed (except for the optional player download above). The Store version does not update itself; updates come from the Store. Word, Excel and PowerPoint to PDF needs Microsoft Office or LibreOffice installed; without either, those choices are not shown.
 ```
 
 ## Later submissions

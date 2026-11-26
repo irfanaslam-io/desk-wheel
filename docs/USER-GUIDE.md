@@ -73,6 +73,22 @@ Everything you copy (text, links, images, files) is remembered, so you can paste
 - **10 s:** like 5 s, with time to open a menu or hover over something first.
 - **Disk:** what's taking up space (see below).
 
+### Media player
+
+Choose **Play** on the Tools wheel of a video or song (the first choice). One file plays with the rest of its folder as the playlist; several play in the order you chose them. Drop more files on the player to add them.
+
+The first time, Desk Wheel asks to download the player's engine: VLC by VideoLAN, free and open source, about 31 MB on a Mac and 43–48 MB on Windows, from Desk Wheel's own GitHub page. Each download is checked against a checksum built into Desk Wheel; anything else is thrown away. Not now? **Open in the system player** instead. Remove the engine any time in **Settings → Updates → Optional downloads**.
+
+It plays every format VLC does (MKV, MP4, AVI, MOV, WebM, FLAC, MP3, OGG…), with:
+
+- **Subtitles**: a subtitle file with the same name next to the video is used automatically; choose tracks, add a file, or shift timing earlier or later;
+- **Speed** from 0.25× to 3× (voices keep their pitch), **audio tracks**, and an **equalizer** with presets;
+- **A-B repeat** (R: first press marks the start, second the end, third turns it off);
+- **Save frame** (P) as a picture in your screenshots folder, **full screen** (F or double-click), **keep on top**;
+- **carries on where you stopped** in videos longer than ten minutes (Home starts over).
+
+Keys: Space play/pause · ← → 10 s (Shift: 1 minute) · ↑ ↓ volume · M mute · [ ] slower/faster · N / B next and previous · S next subtitle · L playlist · . one frame (paused) · Esc leaves full screen, then closes.
+
 ### Disk space
 
 Open it from the Screenshot wheel (**Disk**), the tray menu (**Disk space…**), or the Actions wheel on any folder (**Sizes**). It scans your home folder (or the folder you chose; **Scan…** picks a drive or any folder) and shows:

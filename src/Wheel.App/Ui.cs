@@ -385,6 +385,7 @@ internal enum IconKind
     Arrow, Box, Highlight, Text, Steps, Blur, Redact, Crop, Sparkle, Undo, Redo, Copy, Save, Check, Close, Search,
     Pin, Star, Folder, Edit, Wheel, Settings, Trash, Clipboard, Info, Warning, Image, File, Refresh, Plus, Eye,
     Line, Ellipse, Move, Back, Forward, Expand, Rotate, ZoomIn, ZoomOut,
+    Play, Pause, Next, Previous, Volume, Mute, Subtitles, Repeat, Camera, List, Speed, Music, Rewind, FastForward,
 }
 
 /// <summary>Wheel's own simple line icons, on a 24×24 grid.</summary>
@@ -432,6 +433,20 @@ internal static class Icons
         IconKind.Rotate => ("M20 12 A8 8 0 1 1 17.5 6.2 M20 3.5 L20 8.5 L15 8.5", false),
         IconKind.ZoomIn => ("M10.5 4 A6.5 6.5 0 1 1 10.49 4 Z M15.5 15.5 L20 20 M10.5 7.5 L10.5 13.5 M7.5 10.5 L13.5 10.5", false),
         IconKind.ZoomOut => ("M10.5 4 A6.5 6.5 0 1 1 10.49 4 Z M15.5 15.5 L20 20 M7.5 10.5 L13.5 10.5", false),
+        IconKind.Play => ("M7 4.5 L19.5 12 L7 19.5 Z", true),
+        IconKind.Pause => ("M6.5 4.5 L10 4.5 L10 19.5 L6.5 19.5 Z M14 4.5 L17.5 4.5 L17.5 19.5 L14 19.5 Z", true),
+        IconKind.Next => ("M5 5 L15 12 L5 19 Z M17.5 5 L19.5 5 L19.5 19 L17.5 19 Z", true),
+        IconKind.Previous => ("M19 5 L9 12 L19 19 Z M4.5 5 L6.5 5 L6.5 19 L4.5 19 Z", true),
+        IconKind.Volume => ("M4 9.5 L8 9.5 L13 5 L13 19 L8 14.5 L4 14.5 Z M16.5 9 C17.8 10.6 17.8 13.4 16.5 15 M19 6.5 C21.5 9.5 21.5 14.5 19 17.5", false),
+        IconKind.Mute => ("M4 9.5 L8 9.5 L13 5 L13 19 L8 14.5 L4 14.5 Z M16 9.5 L21 14.5 M21 9.5 L16 14.5", false),
+        IconKind.Subtitles => ("M3 5.5 L21 5.5 L21 18.5 L3 18.5 Z M6.5 12.5 L11 12.5 M13 12.5 L17.5 12.5 M6.5 15.5 L9 15.5 M11 15.5 L17.5 15.5", false),
+        IconKind.Repeat => ("M4 11 L4 9 C4 7.3 5.3 6 7 6 L19 6 M16 3 L19 6 L16 9 M20 13 L20 15 C20 16.7 18.7 18 17 18 L5 18 M8 21 L5 18 L8 15", false),
+        IconKind.Camera => ("M3 8 L7 8 L9 5.5 L15 5.5 L17 8 L21 8 L21 19 L3 19 Z M12 10 A3.5 3.5 0 1 1 11.99 10 Z", false),
+        IconKind.List => ("M9 6 L20 6 M9 12 L20 12 M9 18 L20 18 M4.5 6 L5 6 M4.5 12 L5 12 M4.5 18 L5 18", false),
+        IconKind.Speed => ("M4 17 A8.5 8.5 0 1 1 20 17 M12 14 L16 8.5 M12 14 L12 14.1", false),
+        IconKind.Music => ("M9 18 A2.5 2.5 0 1 1 8.99 18 M9 18 L9 5 L19 3 L19 16 M19 16 A2.5 2.5 0 1 1 18.99 16 M9 9 L19 7", false),
+        IconKind.Rewind => ("M11 6 L4 12 L11 18 Z M20 6 L13 12 L20 18 Z", true),
+        IconKind.FastForward => ("M4 6 L11 12 L4 18 Z M13 6 L20 12 L13 18 Z", true),
         _ => ("M4 4 L20 20", false),
     };
 }

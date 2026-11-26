@@ -9,6 +9,8 @@ Desk Wheel's own code is licensed under the PolyForm Small Business or PolyForm 
 | [SkiaSharp](https://github.com/mono/SkiaSharp) / Skia | Images, PDF creation | MIT / BSD-3-Clause | Yes |
 | [PDFium](https://pdfium.googlesource.com/pdfium/) via [pdfium-binaries](https://github.com/bblanchon/pdfium-binaries) | Reading, rendering, merging and splitting PDFs | BSD-3-Clause and Apache-2.0 | Yes (`engines/`, licence text beside the library) |
 | [FFmpeg](https://ffmpeg.org) 7.1 | Video and audio, screen recording | LGPL-2.1+ (built without GPL or nonfree parts) | Yes, as a separate program (`engines/ffmpeg`); licence and source notes alongside |
+| [LibVLCSharp](https://code.videolan.org/videolan/LibVLCSharp) 3.10.2 | The media player's link to LibVLC | LGPL-2.1+ | Yes, as a separate file (`LibVLCSharp.dll`) so it can be replaced |
+| [LibVLC](https://www.videolan.org/vlc/libvlc.html) 3.0.24 (VLC by VideoLAN) | The media player | LGPL-2.1+ (GPL plugins left out) | No: an optional download from Desk Wheel's GitHub releases, only when you choose to; licence text and source notes inside it. Source: https://code.videolan.org/videolan/vlc/-/tree/3.0.24 |
 | [LAME](https://lame.sourceforge.io) 3.100 | MP3 (inside the Mac FFmpeg) | LGPL-2.0+ | Yes, inside FFmpeg |
 | [libvpx](https://chromium.googlesource.com/webm/libvpx), [libaom](https://aomedia.googlesource.com/aom), [Opus](https://opus-codec.org), [Ogg/Vorbis](https://xiph.org), [libwebp](https://chromium.googlesource.com/webm/libwebp) | VP9, AV1, Opus, Vorbis, WebP (inside the Mac FFmpeg) | BSD-style | Yes, inside FFmpeg |
 | [PDFsharp](https://github.com/empira/PDFsharp) 6.2 | PDF passwords and compression | MIT | Yes (NuGet package) |
