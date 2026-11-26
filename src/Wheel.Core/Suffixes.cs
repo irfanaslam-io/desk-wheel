@@ -25,6 +25,10 @@ public static class Suffixes
             "grey" => "grey",
             "watermark" => "watermarked",
             "flatten" => "flattened",
+            "trim" => "trimmed",
+            "720" => "720p",
+            "1080" => "1080p",
+            "sheet" => "sheet",
             "merge" or "split" => null,
             _ => verb,
         };

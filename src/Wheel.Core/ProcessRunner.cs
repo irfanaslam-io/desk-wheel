@@ -11,12 +11,14 @@ public static class ProcessRunner
     /// <param name="ExitCode">Process exit code.</param>
     /// <param name="ErrorTail">Last 600 characters of stderr (or stdout when stderr is empty), for error messages.</param>
     /// <param name="Output">Full standard output.</param>
-    public sealed record Result(int ExitCode, string ErrorTail, string Output);
+    /// <param name="Error">Full standard error (ffmpeg writes its report there: durations, stream details).</param>
+    public sealed record Result(int ExitCode, string ErrorTail, string Output, string Error = "");
 
-    public static async Task<Result> RunAsync(string exe, IEnumerable<string> args, CancellationToken ct = default)
+    public static async Task<Result> RunAsync(string exe, IEnumerable<string> args, CancellationToken ct = default, string? workingDirectory = null)
     {
         var psi = new ProcessStartInfo(exe)
         {
+            WorkingDirectory = workingDirectory ?? "",
             UseShellExecute = false,
             CreateNoWindow = true,
             RedirectStandardError = true,
@@ -45,6 +47,6 @@ public static class ProcessRunner
         var err = await stderr;
         var output = await stdout;
         var tail = err.Length > 0 ? err : output; // sips reports errors on stdout
-        return new Result(p.ExitCode, tail.Length > 600 ? tail[^600..] : tail, output);
+        return new Result(p.ExitCode, tail.Length > 600 ? tail[^600..] : tail, output, err);
     }
 }

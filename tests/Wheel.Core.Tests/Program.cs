@@ -1056,7 +1056,7 @@ else
     }
 
     // Every ffmpeg option in the catalogue runs against a matching fixture and must produce a non-empty file.
-    foreach (var opt in OptionRegistry.All.Where(o => o.Engine == EngineKind.Ffmpeg))
+    foreach (var opt in OptionRegistry.All.Where(o => o.Engine == EngineKind.Ffmpeg && !MediaEditor.Handles(o.Id)))
     {
         var input = opt.Id.Split('.')[0] switch { "vid" => video, "aud" => audio, _ => image };
         TestAsync($"ffmpeg {opt.Id}", async () =>
@@ -1490,6 +1490,144 @@ Test("Office clean removes author, company and custom properties; the text stays
     True(Read("docProps/core.xml").Contains("Letter"), "title kept");
     True(Read("word/document.xml").Contains("Dear reader"), "text untouched");
     True(cleaned.GetEntry("docProps/custom.xml") is null && !Read("_rels/.rels").Contains("custom.xml"), "custom properties gone, and unlinked");
+});
+
+// ---------------------------------------------------------------- video and audio editing
+
+Test("Trim… reads time ranges: 0:30-1:45, 1:00-, -0:20, seconds and hours", () =>
+{
+    Eq((30.0, 105.0), (MediaEditor.ParseRange("0:30-1:45").Start!.Value, MediaEditor.ParseRange("0:30-1:45").End!.Value), "m:ss");
+    var open = MediaEditor.ParseRange("1:00-");
+    True(open.Start == 60 && open.End is null && open.Problem is null, "to the end");
+    var start = MediaEditor.ParseRange("-0:20");
+    True(start.Start is null && start.End == 20, "the first 20 s");
+    True(MediaEditor.ParseRange("90 - 120.5").End == 120.5, "seconds with spaces");
+    True(MediaEditor.ParseRange("1:02:03.5-1:05:00").Start == 3723.5, "hours");
+    True(MediaEditor.ParseRange("0:30 to 1:00").End == 60, "'to'");
+    True(MediaEditor.ParseRange("1:45-0:30").Problem is not null, "backwards");
+    True(MediaEditor.ParseRange("abc").Problem is not null, "no dash");
+    True(MediaEditor.ParseRange("1:xx-2:00").Problem is not null, "bad time");
+    True(MediaEditor.ParseRange("5:00-", duration: 120).Problem!.Contains("2:00"), "past the end says how long it is");
+    Eq("1:02:03", MediaEditor.Clock(3723.4), "clock with hours");
+    Eq("0:07", MediaEditor.Clock(7), "short clock");
+});
+
+Test("Speed… takes 2, 0.5x, 150%; atempo is chained beyond 0.5–2", () =>
+{
+    Eq(2.0, MediaEditor.ParseSpeed("2").Factor!.Value, "2");
+    Eq(0.5, MediaEditor.ParseSpeed("0.5x").Factor!.Value, "0.5x");
+    Eq(1.5, MediaEditor.ParseSpeed("150%").Factor!.Value, "150%");
+    Eq(1.25, MediaEditor.ParseSpeed("1,25").Factor!.Value, "comma");
+    True(MediaEditor.ParseSpeed("1").Problem is not null, "1 is no change");
+    True(MediaEditor.ParseSpeed("10").Problem is not null, "too fast");
+    True(MediaEditor.ParseSpeed("fast").Problem is not null, "not a number");
+    Eq("atempo=2,atempo=2", MediaEditor.AudioTempo(4), "4x");
+    Eq("atempo=0.5,atempo=0.5", MediaEditor.AudioTempo(0.25), "0.25x");
+    Eq("atempo=1.5", MediaEditor.AudioTempo(1.5), "1.5x");
+});
+
+Test("video tools: menu order, recipes never upscale, subtitle pair tools only for one video + one SRT", () =>
+{
+    var tools = Ids(OptionRegistry.GetOptions(WheelMode.Tools, ["clip.mp4"], caps));
+    Eq("vid.trim", tools[0], "Trim first");
+    foreach (var id in new[] { "vid.speed", "vid.rotate", "vid.flip", "vid.720", "vid.1080", "vid.sheet" })
+        True(tools.Contains(id), id + " missing");
+    True(!tools.Contains("vid.join"), "Join needs two");
+    True(Ids(OptionRegistry.GetOptions(WheelMode.Tools, ["a.mp4", "b.mp4"], caps)).Contains("vid.join"), "Join for two");
+    var audio = Ids(OptionRegistry.GetOptions(WheelMode.Tools, ["a.mp3", "b.wav"], caps));
+    True(audio.Contains("aud.join") && audio.Contains("aud.trim") && audio.Contains("aud.speed"), "audio: " + string.Join(",", audio));
+    var pair = Ids(OptionRegistry.GetOptions(WheelMode.Tools, ["clip.mp4", "clip.srt"], caps));
+    True(pair.Contains("sub.add"), "Subtitles for a video + SRT: " + string.Join(",", pair));
+    True(!Ids(OptionRegistry.GetOptions(WheelMode.Tools, ["a.mp4", "b.mp4", "c.srt"], caps)).Contains("sub.add"), "not for two videos");
+    True(!Ids(OptionRegistry.GetOptions(WheelMode.Tools, ["a.mp4", "b.srt"], noFfmpeg)).Contains("sub.add"), "not without ffmpeg");
+
+    var r720 = FfmpegConverter.BuildArguments(OptionRegistry.All.First(o => o.Id == "vid.720"), "in.mov", "out.mp4");
+    True(r720.Contains("scale=-2:'min(720,ih)'"), "720p never upscales: " + string.Join(" ", r720));
+    True(FfmpegConverter.BuildArguments(OptionRegistry.All.First(o => o.Id == "vid.rotate"), "in.mov", "out.mp4").Contains("transpose=1"), "rotate");
+    True(FfmpegConverter.BuildArguments(OptionRegistry.All.First(o => o.Id == "vid.flip"), "in.mov", "out.mp4").Contains("hflip"), "flip");
+    Eq("720p", Suffixes.For(OptionRegistry.All.First(o => o.Id == "vid.720")), "720p suffix");
+    Eq("trimmed", Suffixes.For(OptionRegistry.All.First(o => o.Id == "vid.trim")), "trim suffix");
+
+    var filters = FfmpegConverter.ParseFilters(" ..C atempo            A->A       Adjust audio tempo.\n ... subtitles         V->V       Render text subtitles\n T.C scale             V->V       Scale\n");
+    True(filters.Contains("subtitles") && filters.Contains("atempo") && filters.Contains("scale"), "filters: " + string.Join(",", filters));
+    var noH264 = caps with { FfmpegEncoders = new HashSet<string> { "aac" } };
+    True(!Ids(OptionRegistry.GetOptions(WheelMode.Tools, ["clip.mp4"], noH264)).Contains("vid.rotate"), "Rotate hidden without H.264");
+});
+
+TestAsync("video and audio editing with the real ffmpeg: trim, join, speed, sheet, subtitles", async () =>
+{
+    if (FfmpegConverter.Locate() is not { } ffmpeg) { Console.WriteLine("        (no ffmpeg here: skipped)"); return; }
+    var dir = Dir("media");
+    async Task Make(string name, string video, double seconds)
+    {
+        var args = new List<string> { "-hide_banner", "-loglevel", "error", "-y" };
+        if (video.Length > 0) args.AddRange(["-f", "lavfi", "-i", $"testsrc=duration={seconds}:size={video}:rate=25"]);
+        args.AddRange(["-f", "lavfi", "-i", $"sine=frequency=440:duration={seconds}"]);
+        if (video.Length > 0) args.AddRange(FfmpegConverter.H264Args(FfmpegConverter.H264Encoder(FfmpegConverter.Encoders(ffmpeg))!, FfmpegConverter.VideoQuality.Normal));
+        args.AddRange(video.Length > 0 ? ["-c:a", "aac", "-shortest"] : ["-c:a", "pcm_s16le"]);
+        args.Add(Path.Combine(dir, name));
+        var r = await ProcessRunner.RunAsync(ffmpeg, args);
+        True(r.ExitCode == 0, $"making {name}: {r.ErrorTail}");
+    }
+    await Make("a.mp4", "320x240", 4);
+    await Make("b.mp4", "320x240", 2);
+    await Make("c.mp4", "640x360", 2);
+    await Make("tone.wav", "", 3);
+    await Make("tone2.wav", "", 2);
+    var a = Path.Combine(dir, "a.mp4");
+
+    var length = await MediaEditor.DurationAsync(a);
+    True(length is > 3.9 and < 4.2, $"duration {length}");
+
+    var trimmed = await MediaEditor.TrimAsync(a, 1, 3);
+    True(trimmed.Success && Path.GetFileName(trimmed.Outputs[0]) == "a (trimmed).mp4", trimmed.Error ?? trimmed.Outputs[0]);
+    var t = await MediaEditor.DurationAsync(trimmed.Outputs[0]);
+    True(t is > 1.9 and < 2.1, $"trimmed to the frame: {t}");
+    var tail = await MediaEditor.TrimAsync(Path.Combine(dir, "tone.wav"), 2, null);
+    True(tail.Success && await MediaEditor.DurationAsync(tail.Outputs[0]) is > 0.9 and < 1.1, "audio to the end");
+
+    var joined = await MediaEditor.JoinAsync([Path.Combine(dir, "b.mp4"), a]);
+    True(joined.Success && Path.GetFileName(joined.Outputs[0]) == "Joined.mp4", joined.Error ?? "");
+    True(await MediaEditor.DurationAsync(joined.Outputs[0]) is > 5.8 and < 6.3, "copied join is 6 s");
+    var mixed = await MediaEditor.JoinAsync([a, Path.Combine(dir, "c.mp4")]);
+    True(mixed.Success, "different sizes: " + mixed.Error);
+    True(await MediaEditor.DurationAsync(mixed.Outputs[0]) is > 5.8 and < 6.3, "re-encoded join is 6 s");
+    var sound = await MediaEditor.JoinAsync([Path.Combine(dir, "tone.wav"), Path.Combine(dir, "tone2.wav")]);
+    True(sound.Success && sound.Outputs[0].EndsWith(".wav") && await MediaEditor.DurationAsync(sound.Outputs[0]) is > 4.9 and < 5.1, "audio join: " + sound.Error);
+
+    var fast = await MediaEditor.SpeedAsync(a, 2);
+    True(fast.Success && Path.GetFileName(fast.Outputs[0]) == "a (2x).mp4", fast.Error ?? "");
+    True(await MediaEditor.DurationAsync(fast.Outputs[0]) is > 1.8 and < 2.2, "twice as fast is half as long");
+    var slow = await MediaEditor.SpeedAsync(Path.Combine(dir, "tone2.wav"), 0.5);
+    True(slow.Success && await MediaEditor.DurationAsync(slow.Outputs[0]) is > 3.9 and < 4.1, "half speed audio: " + slow.Error);
+
+    var sheet = await MediaEditor.SheetAsync(a);
+    True(sheet.Success && sheet.Outputs[0].EndsWith("a (sheet).jpg"), sheet.Error ?? "");
+    var sheetInfo = (await ProcessRunner.RunAsync(ffmpeg, ["-hide_banner", "-i", sheet.Outputs[0]])).Error;
+    var size = System.Text.RegularExpressions.Regex.Match(sheetInfo, @"(\d{3,5})x(\d{3,5})");
+    True(size.Success && int.Parse(size.Groups[1].Value) > 1900 && int.Parse(size.Groups[2].Value) > 1400, "4×4 of 480 px frames: " + size.Value);
+
+    var srt = Path.Combine(dir, "a.srt");
+    File.WriteAllText(srt, "1\n00:00:00,500 --> 00:00:02,000\nHello مرحبا\n");
+    var subbed = await MediaEditor.AddSubtitlesAsync([srt, a]);
+    True(subbed.Success && subbed.Outputs[0].EndsWith("a (subtitled).mp4"), subbed.Error ?? "");
+    var probe = await ProcessRunner.RunAsync(ffmpeg, ["-hide_banner", "-i", subbed.Outputs[0]]);
+    True(probe.Error.Contains("Subtitle: mov_text"), "a subtitle track: " + probe.Error);
+    if (MediaEditor.CanBurnSubtitles())
+    {
+        var burned = await MediaEditor.BurnSubtitlesAsync([a, srt]);
+        True(burned.Success && burned.Outputs[0].EndsWith("a (subtitles burned in).mp4"), burned.Error ?? "");
+    }
+
+    foreach (var id in new[] { "vid.rotate", "vid.flip", "vid.720" })
+    {
+        var r = await FfmpegConverter.RunAsync(OptionRegistry.All.First(o => o.Id == id), a);
+        True(r.Success, id + ": " + r.Error);
+    }
+    var probe720 = await ProcessRunner.RunAsync(ffmpeg, ["-hide_banner", "-i", Path.Combine(dir, "a (720p).mp4")]);
+    True(probe720.Error.Contains("320x240"), "720p doesn't enlarge a small video");
+    var rotated = await ProcessRunner.RunAsync(ffmpeg, ["-hide_banner", "-i", Path.Combine(dir, "a (rotated).mp4")]);
+    True(rotated.Error.Contains("240x320"), "rotated is portrait");
 });
 
 var failed = 0;

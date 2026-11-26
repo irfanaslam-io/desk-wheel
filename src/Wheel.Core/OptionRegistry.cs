@@ -80,10 +80,18 @@ public static class OptionRegistry
             C("vid.to-gif", "GIF", "Animated GIF, 480 px, 12 fps", EngineKind.Ffmpeg, ".gif"),
             C("vid.to-mp3", "MP3", "Extract audio as MP3", EngineKind.Ffmpeg, ".mp3"),
             C("vid.to-m4a", "M4A", "Extract audio as M4A", EngineKind.Ffmpeg, ".m4a"),
+            T("vid.trim", "Trim…", "Keep the part you type, like 0:30-1:45 or 1:00- (to the end)", EngineKind.Ffmpeg),
             T("vid.compress", "Compress", "Compress (H.264, CRF 28)", EngineKind.Ffmpeg, ".mp4"),
             T("vid.half", "50%", "Half resolution", EngineKind.Ffmpeg, ".mp4"),
             T("vid.mute", "Mute", "Remove the audio track", EngineKind.Ffmpeg),
             T("vid.snapshot", "Frame", "Save the frame at 1 s as PNG", EngineKind.Ffmpeg, ".png"),
+            T("vid.join", "Join", "One video from several, in name order", EngineKind.Ffmpeg, many: true, min: 2),
+            T("vid.speed", "Speed…", "Faster or slower: type 2, 1.5 or 0.5 (sound keeps its pitch)", EngineKind.Ffmpeg, ".mp4"),
+            T("vid.rotate", "Rotate", "Rotate 90° clockwise", EngineKind.Ffmpeg, ".mp4"),
+            T("vid.flip", "Flip", "Mirror left to right", EngineKind.Ffmpeg, ".mp4"),
+            T("vid.720", "720p", "Make it 720p (smaller videos stay as they are)", EngineKind.Ffmpeg, ".mp4"),
+            T("vid.1080", "1080p", "Make it 1080p (smaller videos stay as they are)", EngineKind.Ffmpeg, ".mp4"),
+            T("vid.sheet", "Sheet", "16 frames from through the video on one picture (JPG)", EngineKind.Ffmpeg, ".jpg"),
         ],
         [FileKind.Audio] =
         [
@@ -93,6 +101,9 @@ public static class OptionRegistry
             C("aud.to-flac", "FLAC", "Convert to FLAC (lossless)", EngineKind.Ffmpeg, ".flac"),
             C("aud.to-ogg", "OGG", "Convert to OGG Vorbis", EngineKind.Ffmpeg, ".ogg"),
             C("aud.to-opus", "Opus", "Convert to Opus", EngineKind.Ffmpeg, ".opus"),
+            T("aud.trim", "Trim…", "Keep the part you type, like 0:30-1:45", EngineKind.Ffmpeg),
+            T("aud.join", "Join", "One file from several, in name order", EngineKind.Ffmpeg, many: true, min: 2),
+            T("aud.speed", "Speed…", "Faster or slower: type 2, 1.5 or 0.5 (pitch kept)", EngineKind.Ffmpeg),
             T("aud.normalize", "Normalize", "Even out loudness (EBU R128)", EngineKind.Ffmpeg),
             T("aud.mono", "Mono", "Mix down to mono", EngineKind.Ffmpeg),
             T("aud.compress", "Compress", "Compress as MP3, 96 kbps", EngineKind.Ffmpeg, ".mp3"),
@@ -157,6 +168,10 @@ public static class OptionRegistry
             p => p.All(Files.FileTools.CanCount)),
         (T("txt.join", "Join", "One file from several, in name order (CSV keeps one header row)", EngineKind.Text, many: true, min: 2),
             Files.FileTools.CanJoin),
+        (T("sub.add", "Subtitles", "Add the subtitles to the video as a track you can turn on and off", EngineKind.Ffmpeg, many: true, min: 2),
+            Converters.MediaEditor.IsVideoWithSubtitles),
+        (T("sub.burn", "Burn in", "Draw the subtitles onto the picture, so they show everywhere (MP4)", EngineKind.Ffmpeg, ".mp4", many: true, min: 2),
+            p => Converters.MediaEditor.IsVideoWithSubtitles(p) && Converters.MediaEditor.CanBurnSubtitles()),
         (T("off.clean", "Clean", "Remove author, company, editing time and other hidden details", EngineKind.Text),
             p => p.All(Files.FileTools.CanCleanOffice)),
     ];
@@ -269,7 +284,7 @@ public static class OptionRegistry
             .Where(o => !(o.Mode == WheelMode.Convert && AllAlready(paths, o.TargetExtension)))
             .ToList();
 
-        result.AddRange(ByExtension.Where(x => x.Option.Mode == mode && paths.Count >= x.Option.MinItems && x.When(paths)).Select(x => x.Option));
+        result.AddRange(ByExtension.Where(x => x.Option.Mode == mode && caps.Satisfies(x.Option) && paths.Count >= x.Option.MinItems && x.When(paths)).Select(x => x.Option));
 
         // ZIP-ing things that are already archives only wraps them in another archive.
         if (mode == WheelMode.Tools)

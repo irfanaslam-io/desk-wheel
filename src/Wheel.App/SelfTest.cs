@@ -132,6 +132,22 @@ internal static class SelfTest
             }
             Check($"video {id}", () => Produced(Wait(FfmpegConverter.RunAsync(Opt(id), video)), "file"));
         }
+        if (FfmpegConverter.H264Encoder(encoders) is not null)
+        {
+            Check("video trim (to the frame)", () => Produced(Wait(MediaEditor.TrimAsync(video, 0.2, 0.8)), "video"));
+            Check("video speed", () => Produced(Wait(MediaEditor.SpeedAsync(video, 2)), "video"));
+            Check("video 720p", () => Produced(Wait(FfmpegConverter.RunAsync(Opt("vid.720"), video)), "video"));
+        }
+        Check("video join", () => Produced(Wait(MediaEditor.JoinAsync([video, video])), "video"));
+        Check("video thumbnail sheet", () => Produced(Wait(MediaEditor.SheetAsync(video)), "picture"));
+        Check("subtitles added as a track", () =>
+        {
+            var srt = Path.Combine(folder, "sample.srt");
+            File.WriteAllText(srt, "1\n00:00:00,100 --> 00:00:00,900\nHello مرحبا\n");
+            var mkv = Path.Combine(folder, "sample-copy.mkv");
+            File.Copy(video, mkv, overwrite: true);
+            return Produced(Wait(MediaEditor.AddSubtitlesAsync([mkv, srt])), "video");
+        });
 
         // ---- ZIP and extract ----
         string? zip = null;

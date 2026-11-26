@@ -172,6 +172,14 @@ In the editor, click **Beautify** (or press F) to put the screenshot on a colour
 | Join | Tools (2 or more TXT, MD, CSV or LOG files of one kind) | One file in name order: `Joined.txt`. CSV files keep a single header row |
 | JSON | Convert (CSV) | One JSON object per row, keyed by the header row; numbers stay numbers, `0050` stays text |
 | Clean | Tools (DOCX, XLSX, PPTX) | A copy without the author, last editor, company, template, editing time, custom properties and thumbnail. The content is untouched |
+| Trim… | Tools (video, audio) | Keep the part you type: `0:30-1:45`, `1:00-` (to the end), `-0:20` (the first 20 seconds), or seconds like `90-120`. Saved as `name (trimmed)`. Audio, and video kept from the start, are copied straight across (fast, no quality loss); video starting later is re-encoded so it begins on the exact frame |
+| Join | Tools (2 or more videos, or 2 or more audio files) | One file in name order: `Joined.mp4`. Matching clips (from the same phone or camera) are copied straight across; different ones are re-encoded to MP4 at the first clip's size |
+| Speed… | Tools (video, audio) | Type `2` (twice as fast), `0.5` (half speed) or `150%`, from 0.25 to 4. Voices keep their pitch. Saved as `name (2x)` |
+| Rotate, Flip | Tools (video) | Turn 90° clockwise (for phone videos filmed sideways), or mirror left to right. Saved as MP4 |
+| 720p, 1080p | Tools (video) | A smaller copy for sharing. Videos already that size or smaller are left at their size, never enlarged |
+| Sheet | Tools (video) | 16 frames from through the video on one picture, 4 × 4, as `name (sheet).jpg`: see what's in a video at a glance |
+| Subtitles | Tools (one video + one SRT or VTT) | Adds the subtitles to the video as a track you can turn on and off in the player. Nothing is re-encoded. MP4, MOV and MKV keep their type; others become MKV |
+| Burn in | Tools (one video + one SRT or VTT, Windows) | Draws the subtitles onto the picture, so they show in every player and on social media. Arabic and other languages work |
 | Rename | Tools (any files, or a folder's files) | Bulk rename with a live preview: `{name}`, `{n}`, `{date}`, `{folder}`, find and replace, letter case. Never overwrites; Undo puts names back |
 
 **Watched folders** (Settings): pick a folder and what to do, for example *Images → WebP*. Every new file that arrives there is converted automatically, beside the original. Desk Wheel's own results aren't processed again, and files still downloading are waited for.
@@ -220,7 +228,7 @@ An optional "drag a file, tap ⇧" gesture can be turned on in the menu-bar menu
 | --- | --- |
 | Screenshot | Area, Window, Full, Text, 5 s, Files, History, Settings |
 | Convert | Images: PNG, JPG, WebP, HEIC (Mac), AVIF, ICO, TIFF, GIF, BMP · PDF → PNG / JPG (every page) / TXT (scanned PDFs too) · Video: MP4, WebM, MKV, MOV, GIF, MP3, M4A · Audio: MP3, M4A, WAV, FLAC, OGG, Opus · ZIP ↔ TAR.GZ, Extract · SRT ↔ VTT, TXT · Office: PDF, DOCX, XLSX, PPTX, CSV… · Markdown: Read, HTML |
-| Tools | Images: Compress, 50%, Rotate, No EXIF, Edit, Text, Images → PDF · PDF: Merge, Split, Rotate · Video: Compress, 50%, Mute, Frame · Audio: Normalize, Mono, Compress · Markdown: Read · ZIP any selection |
+| Tools | Images: Compress, 50%, Rotate, No EXIF, Edit, Text, Images → PDF · PDF: Merge, Split, Rotate · Video: Trim…, Compress, 50%, Mute, Frame, Join, Speed…, Rotate, Flip, 720p, 1080p, Sheet · Video + SRT: Subtitles, Burn in · Audio: Trim…, Join, Speed…, Normalize, Mono, Compress · Markdown: Read · ZIP any selection |
 | Actions | Copy path, Open terminal here, Reveal, Copy to Desktop, Copy name |
 
 With the optional keyboard gesture on, Shift / ⌘ (Ctrl) / ⌃ (Alt) also switch to Convert / Tools / Actions. Esc closes the wheel.
@@ -229,6 +237,7 @@ With the optional keyboard gesture on, Shift / ⌘ (Ctrl) / ⌃ (Alt) also switc
 
 - Drags of email attachments or browser images (virtual files) aren't accepted yet. Save them first.
 - Scrolling screenshots and offline translation aren't built (see the ideas list).
+- Burn in (subtitles drawn onto the video) isn't offered on Mac yet: the Mac's video engine is built without the subtitle renderer. Subtitles (as a track) works on both.
 - Colour picking and choosing a recording area work on the screen under the pointer; the top strip under the macOS menu bar can't be picked.
 - Windows: drags from an app running as administrator can't reach Desk Wheel (a Windows security rule).
 - With "Work in all apps" on, holding the mouse and tapping a key (for example, to select text) can briefly open an empty wheel. It closes when you let go.

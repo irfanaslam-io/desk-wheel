@@ -123,6 +123,34 @@ public static class FfmpegConverter
         return _encoders;
     }
 
+    private static IReadOnlySet<string>? _filters;
+    private static string? _filtersOf;
+
+    /// <summary>The filters this ffmpeg has (from "ffmpeg -filters"), probed once per ffmpeg. The Mac build has no "subtitles".</summary>
+    public static IReadOnlySet<string> Filters(string ffmpeg)
+    {
+        if (_filters is not null && _filtersOf == ffmpeg) return _filters;
+        try
+        {
+            var r = Task.Run(() => ProcessRunner.RunAsync(ffmpeg, ["-hide_banner", "-filters"])).GetAwaiter().GetResult();
+            _filters = ParseFilters(r.Output);
+        }
+        catch (Exception ex) when (ex is IOException or InvalidOperationException or System.ComponentModel.Win32Exception)
+        {
+            _filters = new HashSet<string>();
+        }
+        _filtersOf = ffmpeg;
+        return _filters;
+    }
+
+    /// <summary>Filter names from "ffmpeg -filters" output (lines like " T.C subtitles  V->V  Render text subtitles…").</summary>
+    public static IReadOnlySet<string> ParseFilters(string output) =>
+        output.Split('\n')
+            .Select(l => System.Text.RegularExpressions.Regex.Match(l, @"^\s[T.][S.][C.]?\s+(\S+)\s+\S+->\S+"))
+            .Where(m => m.Success)
+            .Select(m => m.Groups[1].Value)
+            .ToHashSet();
+
     /// <summary>Encoder names from "ffmpeg -encoders" output (lines like " V....D libx264  H.264…").</summary>
     public static IReadOnlySet<string> ParseEncoders(string output) =>
         output.Split('\n')
@@ -157,7 +185,8 @@ public static class FfmpegConverter
     /// <summary>Encoders an option needs, other than ffmpeg's built-in ones. "h264" means any H.264 encoder.</summary>
     public static IReadOnlyList<string> NeededEncoders(string optionId) => optionId switch
     {
-        "vid.to-mp4" or "vid.to-mov" or "vid.compress" or "vid.half" => ["h264"],
+        "vid.to-mp4" or "vid.to-mov" or "vid.compress" or "vid.half" or "vid.rotate" or "vid.flip" or "vid.720" or "vid.1080"
+            or "vid.speed" or "sub.burn" => ["h264"],
         "vid.to-webm" => ["libvpx-vp9", "libopus"],
         "vid.to-mp3" or "aud.to-mp3" or "aud.compress" => ["libmp3lame"],
         "aud.to-ogg" => ["libvorbis"],
@@ -212,6 +241,15 @@ public static class FfmpegConverter
                 a.AddRange(h264Small); a.AddRange(["-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart"]); break;
             case "vid.half":
                 a.AddRange(h264); a.AddRange(["-vf", "scale=trunc(iw/4)*2:trunc(ih/4)*2", "-c:a", "copy"]); break;
+            case "vid.rotate":
+                a.AddRange(h264); a.AddRange(["-vf", "transpose=1", "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart"]); break;
+            case "vid.flip":
+                a.AddRange(h264); a.AddRange(["-vf", "hflip", "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart"]); break;
+            case "vid.720":
+            case "vid.1080":
+                // Never made bigger: a 480p clip stays 480p. -2 keeps the width even, as H.264 needs.
+                var height = option.Id == "vid.720" ? 720 : 1080;
+                a.AddRange(h264); a.AddRange(["-vf", $"scale=-2:'min({height},ih)'", "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart"]); break;
             case "vid.mute":
                 a.AddRange(["-map", "0:v", "-c:v", "copy", "-an"]); break;
             case "vid.snapshot":

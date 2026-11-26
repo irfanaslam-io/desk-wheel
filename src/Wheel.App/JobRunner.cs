@@ -138,6 +138,24 @@ internal sealed class JobRunner
                     answerText = answerText.Trim();
                     if (option.Id == "pdf.watermark") _lastPdfMark = answerText; else _lastPictureMark = answerText;
                     break;
+                case "vid.trim" or "aud.trim":
+                {
+                    double? length = paths.Count == 1 ? await MediaEditor.DurationAsync(paths[0]) : null;
+                    answerText = await PromptWindow.AskAsync("Trim",
+                        (length is { } d ? $"{Describe(paths)} is {MediaEditor.Clock(d)} long. " : "") +
+                        "Part to keep: 0:30-1:45, 1:00- (to the end) or -0:20 (the start). Seconds work too: 90-120.",
+                        _lastTrim, "0:30-1:45", check: t => MediaEditor.ParseRange(t, length).Problem);
+                    if (answerText is null) return;
+                    _lastTrim = answerText;
+                    break;
+                }
+                case "vid.speed" or "aud.speed":
+                    answerText = await PromptWindow.AskAsync("Speed",
+                        $"New speed for {Describe(paths)}: 2 is twice as fast, 0.5 is half speed (0.25 to 4).",
+                        _lastSpeed ?? "2", "2", check: t => MediaEditor.ParseSpeed(t).Problem);
+                    if (answerText is null) return;
+                    _lastSpeed = answerText;
+                    break;
                 case "img.resize":
                     var answer = await PromptWindow.AskAsync("Resize", "New size: 1920x1080 (fits inside, keeps proportions), 1080 (width), x720 (height) or 25%.",
                         _lastSize, "1920x1080", check: t => Wheel.Core.Files.ResizeSpec.Parse(t) is null ? "Try 1920x1080, 1080, x720 or 50%." : null);
@@ -183,6 +201,8 @@ internal sealed class JobRunner
                         "pdf.flatten" => await ImageEngine.RebuildPdfAsync(path, grey: false),
                         "pdf.clean" => await Task.Run(() => PdfTools.Clean(path)),
                         "img.watermark" => await ImageEngine.WatermarkAsync(path, answerText!),
+                        "vid.trim" or "aud.trim" => await Trim(path, answerText!),
+                        "vid.speed" or "aud.speed" => await MediaEditor.SpeedAsync(path, MediaEditor.ParseSpeed(answerText!).Factor!.Value),
                         "arc.extract" or "arc.to-zip" or "arc.to-targz" => await Task.Run(() => ArchiveConverter.Run(option, [path], password)),
                         _ => JobResult.Fail($"No engine for {option.Id}"),
                     });
@@ -371,7 +391,14 @@ internal sealed class JobRunner
         }
     }
 
-    private string? _lastPages, _lastPdfMark, _lastPictureMark;
+    private string? _lastPages, _lastPdfMark, _lastPictureMark, _lastTrim, _lastSpeed;
+
+    /// <summary>Trim… with the typed range, checked again against this file's length.</summary>
+    private static async Task<JobResult> Trim(string path, string typed)
+    {
+        var (start, end, problem) = MediaEditor.ParseRange(typed, await MediaEditor.DurationAsync(path));
+        return problem is not null ? JobResult.Fail($"{Path.GetFileName(path)}: {problem}") : await MediaEditor.TrimAsync(path, start, end);
+    }
 
     /// <summary>Pages… keeps the typed pages in that order; Delete… keeps all the others.</summary>
     private static JobResult KeepPages(string path, bool keep, string typed)
@@ -398,6 +425,14 @@ internal sealed class JobRunner
         EngineKind.Image when option.Id is "img.row" or "img.column" or "img.grid" => ImageEngine.CombineAsync(paths, option.Id[4..]),
         EngineKind.Image => ImageEngine.RunAsync(option, paths[0]),
         EngineKind.Pdf => Task.Run(() => PdfConverter.Run(option, paths, ImageEngine.WriteRenderedPage)),
+        EngineKind.Ffmpeg when MediaEditor.Handles(option.Id) => option.Id switch
+        {
+            "vid.join" or "aud.join" => MediaEditor.JoinAsync(paths),
+            "vid.sheet" => MediaEditor.SheetAsync(paths[0]),
+            "sub.add" => MediaEditor.AddSubtitlesAsync(paths),
+            "sub.burn" => MediaEditor.BurnSubtitlesAsync(paths),
+            _ => Task.FromResult(JobResult.Fail($"{option.Label} needs its settings first.")),
+        },
         EngineKind.Ffmpeg => FfmpegConverter.RunAsync(option, paths[0]),
         EngineKind.Archive => Task.Run(() => ArchiveConverter.Run(option, paths)),
         EngineKind.Text => Task.Run(() => option.Id switch
