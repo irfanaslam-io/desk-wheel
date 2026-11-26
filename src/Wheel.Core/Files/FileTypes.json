@@ -1,0 +1,55 @@
+{
+  "comment": "What Desk Wheel opens, per group. One list for everything: scripts/file-associations.py makes the Windows installer's registry entries, the Store package's associations and the Mac app's declarations from it, and the app's Default apps screen reads it. 'mac' are the Uniform Type Identifiers Desk Wheel asks to become the default for; 'macImport' declares the ones macOS may not know.",
+  "groups": [
+    {
+      "id": "pictures", "name": "Pictures", "progId": "DeskWheel.Picture", "friendly": "Picture", "opensIn": "the picture viewer",
+      "extensions": [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".heic", ".heif", ".avif", ".tif", ".tiff", ".ico", ".jfif"],
+      "macDocument": ["public.image"],
+      "mac": ["public.jpeg", "public.png", "public.heic", "public.heif", "public.tiff", "com.compuserve.gif", "com.microsoft.bmp", "org.webmproject.webp", "public.avif", "com.microsoft.ico"]
+    },
+    {
+      "id": "videos", "name": "Videos", "progId": "DeskWheel.Video", "friendly": "Video", "opensIn": "the player",
+      "extensions": [".mp4", ".m4v", ".mov", ".mkv", ".avi", ".webm", ".wmv", ".flv", ".3gp", ".mts", ".m2ts", ".mpg", ".mpeg"],
+      "macDocument": ["public.movie"],
+      "mac": ["public.mpeg-4", "com.apple.m4v-video", "com.apple.quicktime-movie", "org.matroska.mkv", "public.avi", "org.webmproject.webm", "com.microsoft.windows-media-wmv", "com.adobe.flash.video", "public.3gpp", "public.avchd-mpeg-2-transport-stream", "public.mpeg"]
+    },
+    {
+      "id": "music", "name": "Music", "progId": "DeskWheel.Audio", "friendly": "Audio", "opensIn": "the player",
+      "extensions": [".mp3", ".m4a", ".aac", ".wav", ".flac", ".ogg", ".oga", ".opus", ".wma", ".aiff", ".aif"],
+      "macDocument": ["public.audio"],
+      "mac": ["public.mp3", "com.apple.m4a-audio", "public.aac-audio", "com.microsoft.waveform-audio", "org.xiph.flac", "org.xiph.ogg-audio", "org.xiph.opus", "com.microsoft.windows-media-wma", "public.aiff-audio", "public.aifc-audio"]
+    },
+    {
+      "id": "pdf", "name": "PDF", "progId": "DeskWheel.Pdf", "friendly": "PDF document", "opensIn": "the PDF viewer",
+      "extensions": [".pdf"],
+      "macDocument": ["com.adobe.pdf"],
+      "mac": ["com.adobe.pdf"]
+    },
+    {
+      "id": "archives", "name": "Archives", "progId": "DeskWheel.Archive", "friendly": "Archive", "opensIn": "the archive window",
+      "extensions": [".zip", ".rar", ".7z", ".iso", ".tar", ".gz", ".tgz", ".bz2", ".tbz2", ".xz", ".txz", ".cbz", ".cbr"],
+      "macDocument": ["public.zip-archive", "com.rarlab.rar-archive", "org.7-zip.7-zip-archive", "public.iso-image", "public.tar-archive", "org.gnu.gnu-zip-archive", "org.gnu.gnu-zip-tar-archive", "public.bzip2-archive", "org.tukaani.xz-archive", "com.cbz-comic", "com.cbr-comic"],
+      "mac": ["public.zip-archive", "com.rarlab.rar-archive", "org.7-zip.7-zip-archive", "public.iso-image", "public.tar-archive", "org.gnu.gnu-zip-archive", "org.gnu.gnu-zip-tar-archive", "public.bzip2-archive", "org.tukaani.xz-archive"]
+    },
+    {
+      "id": "text", "name": "Markdown and JSON", "progId": "DeskWheel.Text", "friendly": "Markdown or JSON", "opensIn": "a readable page",
+      "extensions": [".md", ".markdown", ".json"],
+      "macDocument": ["net.daringfireball.markdown", "public.json"],
+      "mac": ["net.daringfireball.markdown", "public.json"]
+    }
+  ],
+  "macImport": [
+    { "uti": "org.matroska.mkv", "conformsTo": ["public.movie"], "description": "Matroska video", "extensions": ["mkv"], "mime": "video/x-matroska" },
+    { "uti": "org.webmproject.webm", "conformsTo": ["public.movie"], "description": "WebM video", "extensions": ["webm"], "mime": "video/webm" },
+    { "uti": "com.adobe.flash.video", "conformsTo": ["public.movie"], "description": "Flash video", "extensions": ["flv"], "mime": "video/x-flv" },
+    { "uti": "org.xiph.flac", "conformsTo": ["public.audio"], "description": "FLAC audio", "extensions": ["flac"], "mime": "audio/flac" },
+    { "uti": "org.xiph.ogg-audio", "conformsTo": ["public.audio"], "description": "Ogg audio", "extensions": ["ogg", "oga"], "mime": "audio/ogg" },
+    { "uti": "org.xiph.opus", "conformsTo": ["public.audio"], "description": "Opus audio", "extensions": ["opus"], "mime": "audio/opus" },
+    { "uti": "com.rarlab.rar-archive", "conformsTo": ["public.data", "public.archive"], "description": "RAR archive", "extensions": ["rar"], "mime": "application/vnd.rar" },
+    { "uti": "org.7-zip.7-zip-archive", "conformsTo": ["public.data", "public.archive"], "description": "7-Zip archive", "extensions": ["7z"], "mime": "application/x-7z-compressed" },
+    { "uti": "org.tukaani.xz-archive", "conformsTo": ["public.data", "public.archive"], "description": "XZ archive", "extensions": ["xz", "txz"], "mime": "application/x-xz" },
+    { "uti": "com.cbz-comic", "conformsTo": ["public.zip-archive"], "description": "Comic book (ZIP)", "extensions": ["cbz"], "mime": "application/vnd.comicbook+zip" },
+    { "uti": "com.cbr-comic", "conformsTo": ["com.rarlab.rar-archive"], "description": "Comic book (RAR)", "extensions": ["cbr"], "mime": "application/vnd.comicbook-rar" },
+    { "uti": "net.daringfireball.markdown", "conformsTo": ["public.plain-text"], "description": "Markdown document", "extensions": ["md", "markdown"], "mime": "text/markdown" }
+  ]
+}

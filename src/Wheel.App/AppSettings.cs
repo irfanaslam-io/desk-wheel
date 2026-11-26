@@ -79,6 +79,9 @@ internal sealed class AppSettings
     /// <summary>Look for a newer version every so often and offer to install it.</summary>
     public bool AutoUpdate { get; set; } = true;
 
+    /// <summary>The "Open files with Desk Wheel" choice was offered (once, after install or update).</summary>
+    public bool DefaultAppsOffered { get; set; }
+
     public DateTime? LastUpdateCheck { get; set; }
 
     /// <summary>A version the person chose to skip.</summary>

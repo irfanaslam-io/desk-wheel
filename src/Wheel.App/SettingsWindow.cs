@@ -33,8 +33,11 @@ internal sealed class SettingsWindow : Window
 
     private readonly Updater? _updater;
 
-    public SettingsWindow(AppSettings settings, IPlatform platform, Updater? updater = null)
+    private readonly Action? _openDefaultApps;
+
+    public SettingsWindow(AppSettings settings, IPlatform platform, Updater? updater = null, Action? openDefaultApps = null)
     {
+        _openDefaultApps = openDefaultApps;
         _settings = settings;
         _platform = platform;
         _updater = updater;
@@ -166,7 +169,9 @@ internal sealed class SettingsWindow : Window
                 PackageInfo.IsPackaged
                     ? Row("Start when I sign in", "Switched on or off in Windows Settings › Apps › Startup.",
                         Ui.Secondary("Open", () => Links.Open(PackageInfo.StartupSettings)))
-                    : Row(mac ? "Open at login" : "Start when I sign in", "Desk Wheel starts in the background, ready to use.", login)),
+                    : Row(mac ? "Open at login" : "Start when I sign in", "Desk Wheel starts in the background, ready to use.", login),
+                Row("Open files with Desk Wheel", "Pictures, videos, music, PDFs, archives, Markdown and JSON open in Desk Wheel when you double-click them.",
+                    Ui.Secondary("Choose…", () => _openDefaultApps?.Invoke()))),
             Group("Shortcuts",
                 Row("Open Desk Wheel for the selected files", null, Keys(_platform.HotkeyName)),
                 Row("Clipboard history", null, Keys(mac ? "⌥⇧V" : "Alt+Shift+V")),

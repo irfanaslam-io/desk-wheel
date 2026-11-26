@@ -536,6 +536,23 @@ internal sealed partial class WindowsPlatform : IPlatform
     }
 
     // explorer.exe needs exactly: /select,"C:\path\file"
+    /// <summary>
+    /// Windows doesn't let apps make themselves the default: this opens Settings › Apps › Default apps on Desk Wheel's
+    /// page, where people pick it ("Set default" on Windows 11).
+    /// </summary>
+    public void OpenDefaultAppsSettings()
+    {
+        var page = PackageInfo.IsPackaged
+            ? "ms-settings:defaultapps?registeredAUMID=" + Uri.EscapeDataString("irfanaslam.io.DeskWheel_69qks97mj3kmy!DeskWheel")
+            : "ms-settings:defaultapps?registeredAppUser=" + Uri.EscapeDataString("Desk Wheel");
+        try { Process.Start(new ProcessStartInfo(page) { UseShellExecute = true })?.Dispose(); }
+        catch (Win32Exception ex)
+        {
+            Log.Write(ex);
+            Process.Start(new ProcessStartInfo("ms-settings:defaultapps") { UseShellExecute = true })?.Dispose();
+        }
+    }
+
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     private struct ShFileOp
     {

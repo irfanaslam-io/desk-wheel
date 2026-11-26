@@ -28,6 +28,8 @@ jobs:
         run: |
           sudo apt-get update && sudo apt-get install -y ffmpeg tesseract-ocr
           bash scripts/get-pdfium.sh linux-x64
+      - name: File associations match FileTypes.json (Windows installer, Store package, Mac app)
+        run: python3 scripts/file-associations.py --check
       - name: Core tests
         run: dotnet run --project tests/Wheel.Core.Tests -c Release
 

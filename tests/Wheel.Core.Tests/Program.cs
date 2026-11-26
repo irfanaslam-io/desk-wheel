@@ -2006,6 +2006,22 @@ Test("archive window: list every format without extracting, then extract only wh
     catch (InvalidDataException) { }
 });
 
+Test("file types: one list for every platform, and every type it lists has a window that opens it", () =>
+{
+    var groups = Wheel.Core.Files.FileTypes.Groups;
+    Eq("pictures,videos,music,pdf,archives,text", string.Join(",", groups.Select(g => g.Id)), "groups");
+    var all = groups.SelectMany(g => g.Extensions).ToList();
+    Eq(all.Count, all.Distinct().Count(), "no extension in two groups");
+    foreach (var ext in all)
+    {
+        var kind = FileClassifier.Classify("a" + ext);
+        True(kind is FileKind.Image or FileKind.Video or FileKind.Audio or FileKind.Pdf or FileKind.Archive or FileKind.Markdown or FileKind.Json, $"{ext} is {kind}");
+    }
+    Eq("videos", Wheel.Core.Files.FileTypes.GroupFor("/x/Film.MKV")!.Id, "by extension, any case");
+    True(Wheel.Core.Files.FileTypes.GroupFor("a.docx") is null, "not ours");
+    Eq("JPG, JPEG, PNG…", groups[0].Examples(3), "label");
+});
+
 var failed = 0;
 foreach (var (name, body) in tests)
 {

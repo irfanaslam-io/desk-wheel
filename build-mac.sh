@@ -96,9 +96,12 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>NSHighResolutionCapable</key><true/>
   <!-- Shown in the one-time "DeskWheel wants to control Finder" prompt (used to read the selected files) -->
   <key>NSAppleEventsUsageDescription</key><string>DeskWheel reads which files you selected in Finder, and asks Microsoft Word, Excel and PowerPoint to save your documents as PDF.</string>
+  <!-- The files Desk Wheel opens (Open With, double-click once it's chosen as the default) -->
+$(cat platform/mac/DocumentTypes.plist)
 </dict>
 </plist>
 PLIST
+plutil -lint "$APP/Contents/Info.plist" >/dev/null || { echo "Info.plist is not valid"; exit 1; }
 
 if [[ -n "${WHEEL_SIGN_ID:-}" ]]; then
   # Developer ID with the hardened runtime: every Mach-O file inside first, then the app.

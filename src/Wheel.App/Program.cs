@@ -47,7 +47,9 @@ internal static class Program
             e.SetObserved();
         };
         Files = args.Where(a => File.Exists(a) || Directory.Exists(a)).Select(Path.GetFullPath).ToArray();
-        var viewAt = Array.IndexOf(args, "--view");
+        // --open (any type Desk Wheel opens) and --view (older installs' picture association) go to the same place.
+        var viewAt = Array.IndexOf(args, "--open");
+        if (viewAt < 0) viewAt = Array.IndexOf(args, "--view");
         if (viewAt >= 0 && viewAt + 1 < args.Length && (File.Exists(args[viewAt + 1]) || Directory.Exists(args[viewAt + 1])))
             View = Path.GetFullPath(args[viewAt + 1]);
         var version = typeof(Program).Assembly.GetName().Version;

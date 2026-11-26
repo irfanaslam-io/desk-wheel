@@ -11,6 +11,7 @@
     <!-- The JSON viewer page (self-contained: no internet, nothing loaded from elsewhere). -->
     <EmbeddedResource Include="Json\JsonViewer.html" LogicalName="Wheel.Core.Json.JsonViewer.html" />
     <EmbeddedResource Include="Pdf\GlyphlessFont.ttf" LogicalName="Wheel.Core.Pdf.GlyphlessFont.ttf" />
+    <EmbeddedResource Include="Files\FileTypes.json" LogicalName="Wheel.Core.Files.FileTypes.json" />
   </ItemGroup>
 
   <ItemGroup>

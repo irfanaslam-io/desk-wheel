@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
@@ -53,6 +54,14 @@ internal sealed class App : Application, INotifier, IScreenToolHost
                 catch (Exception ex) when (ex is IOException or InvalidOperationException) { Log.Write(ex); }
             });
         _jobs = new JobRunner(this, _platform);
+        // Mac: Finder's Open With and double-clicks arrive here, while running or at launch.
+        if (TryGetFeature(typeof(IActivatableLifetime)) is IActivatableLifetime activatable)
+            activatable.Activated += (_, e) =>
+            {
+                if (e is not FileActivatedEventArgs files) return;
+                foreach (var item in files.Files)
+                    if (Avalonia.Platform.Storage.StorageProviderExtensions.TryGetLocalPath(item) is { } local) _ = OpenFileAsync(local);
+            };
         // Interrupted downloads, and a pack removed while it was in use, are cleared now.
         _ = Task.Run(() =>
         {
@@ -134,6 +143,16 @@ internal sealed class App : Application, INotifier, IScreenToolHost
                     if (yes) { Usage.Track("app_start"); _ = Usage.FlushAsync(); } else Usage.Forget();
                 }).Show();
             }, TimeSpan.FromSeconds(_settings.SeenWelcome ? 8 : 40));
+
+        // Offer once to open pictures, videos, music, PDFs and archives with Desk Wheel (after the welcome and consent).
+        if (!_settings.DefaultAppsOffered)
+            Avalonia.Threading.DispatcherTimer.RunOnce(() =>
+            {
+                if (_settings.DefaultAppsOffered) return;
+                _settings.DefaultAppsOffered = true;
+                _settings.Save();
+                OpenDefaultApps();
+            }, TimeSpan.FromSeconds(_settings.SeenWelcome ? 20 : 75));
 
         // Every 30 minutes: send waiting statistics, look for an update (the updater itself checks at most twice a day).
         async void Housekeeping()
@@ -463,6 +482,19 @@ internal sealed class App : Application, INotifier, IScreenToolHost
 
     private PlayerWindow? _playerWindow;
 
+    private DefaultAppsWindow? _defaultApps;
+
+    /// <summary>"Open files with Desk Wheel": defaults on Mac, Settings' page on Windows.</summary>
+    private void OpenDefaultApps()
+    {
+        if (_defaultApps is { } open) { open.Activate(); return; }
+        _defaultApps = new DefaultAppsWindow(_platform);
+        _defaultApps.Closed += (_, _) => _defaultApps = null;
+        _platform.BringToFront();
+        _defaultApps.Show();
+        _defaultApps.Activate();
+    }
+
     /// <summary>The PDF viewer for one file (or empty, for Open…).</summary>
     private async System.Threading.Tasks.Task OpenPdfAsync(string? path)
     {
@@ -652,7 +684,7 @@ internal sealed class App : Application, INotifier, IScreenToolHost
             _settingsWindow.Activate();
             return;
         }
-        var window = new SettingsWindow(_settings, _platform, _updater);
+        var window = new SettingsWindow(_settings, _platform, _updater, OpenDefaultApps);
         var gestureWas = _settings.KeyGesture;
         window.Changed += () =>
         {
@@ -978,12 +1010,36 @@ internal sealed class App : Application, INotifier, IScreenToolHost
     // ---------- one-shot: files given on the command line ----------
 
     /// <summary>"DeskWheel --view picture.jpg" (Open with › Desk Wheel): just the viewer; quits when it's closed.</summary>
+    /// <summary>
+    /// Started to open one file (Windows: Open with / double-click): its window, then quit when no window is left.
+    /// </summary>
     private void StartViewer(string path)
     {
-        var viewer = OpenViewer([path]);
-        if (viewer is null) { Quit(); return; }
-        // The editor can be opened from the viewer; quit once no window is left.
-        viewer.Closed += (_, _) => Avalonia.Threading.Dispatcher.UIThread.Post(QuitWhenNoWindows, Avalonia.Threading.DispatcherPriority.Background);
+        _ = Run();
+        async Task Run()
+        {
+            await OpenFileAsync(path);
+            // Markdown and JSON open in the browser, leaving no window: wait a moment, then this copy can go.
+            await Task.Delay(500);
+            QuitWhenNoWindows();
+        }
+    }
+
+    /// <summary>A file opened from Finder or File Explorer (Open With, double-click): the window that shows it.</summary>
+    private async Task OpenFileAsync(string path)
+    {
+        Log.Trace($"Open: {path}");
+        if (System.IO.Directory.Exists(path)) { OpenViewer([path]); return; }
+        switch (FileClassifier.Classify(path))
+        {
+            case FileKind.Image: OpenViewer([path]); break;
+            case FileKind.Video or FileKind.Audio: OpenPlayer([path]); break;
+            case FileKind.Pdf: await OpenPdfAsync(path); break;
+            case FileKind.Archive: OpenArchive(path); break;
+            case FileKind.Markdown: await _jobs.RunAsync(OptionRegistry.All.First(o => o.Id == "md.read"), [path]); break;
+            case FileKind.Json: await _jobs.RunAsync(OptionRegistry.All.First(o => o.Id == "json.view"), [path]); break;
+            default: Notify("Desk Wheel can't open this", System.IO.Path.GetFileName(path), error: true); break;
+        }
     }
 
     private void QuitWhenNoWindows()

@@ -429,6 +429,58 @@ internal sealed partial class MacPlatform : IPlatform
 
     public void Reveal(string path) => Open("-R", path);
 
+    // ---------- default apps (LaunchServices) ----------
+
+    private const string BundleId = "app.deskwheel.mac";
+    private const uint RolesAll = 0xFFFFFFFF;
+
+    [DllImport(CoreServices)] private static extern int LSSetDefaultRoleHandlerForContentType(IntPtr contentType, uint role, IntPtr handlerBundleId);
+    [DllImport(CoreServices)] private static extern IntPtr LSCopyDefaultRoleHandlerForContentType(IntPtr contentType, uint role);
+
+    private static IntPtr CfString(string text) => CFStringCreateWithCString(IntPtr.Zero, Encoding.UTF8.GetBytes(text + "\0"), Utf8Encoding);
+
+    public bool CanSetDefaultApps => true;
+
+    public string? SetDefaultApp(IReadOnlyList<string> macTypes)
+    {
+        var bundle = CfString(BundleId);
+        var failed = new List<string>();
+        try
+        {
+            foreach (var uti in macTypes)
+            {
+                var type = CfString(uti);
+                try
+                {
+                    var status = LSSetDefaultRoleHandlerForContentType(type, RolesAll, bundle);
+                    if (status != 0) { failed.Add($"{uti} ({status})"); Log.Trace($"  Default for {uti}: error {status}"); }
+                }
+                finally { CFRelease(type); }
+            }
+        }
+        finally { CFRelease(bundle); }
+        // Some types (a format nothing on this Mac has declared yet) can't be set; the rest still are.
+        return failed.Count == macTypes.Count ? "macOS didn't accept the change: " + string.Join(", ", failed) : null;
+    }
+
+    public bool IsDefaultApp(IReadOnlyList<string> macTypes) => macTypes.Count > 0 && macTypes.All(uti =>
+    {
+        var type = CfString(uti);
+        try
+        {
+            var handler = LSCopyDefaultRoleHandlerForContentType(type, RolesAll);
+            if (handler == IntPtr.Zero) return false;
+            try
+            {
+                var buffer = new byte[256];
+                return CFStringGetCString(handler, buffer, buffer.Length, Utf8Encoding)
+                       && string.Equals(Encoding.UTF8.GetString(buffer).TrimEnd('\0'), BundleId, StringComparison.OrdinalIgnoreCase);
+            }
+            finally { CFRelease(handler); }
+        }
+        finally { CFRelease(type); }
+    });
+
     public async Task<(IReadOnlyList<string> Moved, string? Problem)> MoveToTrashAsync(IReadOnlyList<string> paths)
     {
         // Finder's own delete: items can be put back from the Trash, and disks other than the startup disk work.

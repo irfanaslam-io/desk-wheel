@@ -132,6 +132,21 @@ internal interface IPlatform : IDisposable
     /// </summary>
     Task<(System.Collections.Generic.IReadOnlyList<string> Moved, string? Problem)> MoveToTrashAsync(System.Collections.Generic.IReadOnlyList<string> paths);
 
+    /// <summary>
+    /// Mac: Desk Wheel can make itself the default app for file types (when the person says so).
+    /// Windows doesn't allow that: <see cref="OpenDefaultAppsSettings"/> takes people to the page where they choose.
+    /// </summary>
+    bool CanSetDefaultApps => false;
+
+    /// <summary>Mac: makes Desk Wheel the default for these types (Uniform Type Identifiers). Returns a problem, or null.</summary>
+    string? SetDefaultApp(System.Collections.Generic.IReadOnlyList<string> macTypes) => "Not supported here.";
+
+    /// <summary>Mac: true when Desk Wheel already opens all these types. Windows: unknown (false).</summary>
+    bool IsDefaultApp(System.Collections.Generic.IReadOnlyList<string> macTypes) => false;
+
+    /// <summary>Windows: Settings › Apps › Default apps, on Desk Wheel's own page.</summary>
+    void OpenDefaultAppsSettings() { }
+
     /// <summary>"Trash" on a Mac, "Recycle Bin" on Windows.</summary>
     string TrashName => OperatingSystem.IsMacOS() ? "Trash" : "Recycle Bin";
 

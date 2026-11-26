@@ -16,12 +16,13 @@ public static class FileClassifier
         [".mp4"] = FileKind.Video, [".mov"] = FileKind.Video, [".mkv"] = FileKind.Video,
         [".webm"] = FileKind.Video, [".avi"] = FileKind.Video, [".wmv"] = FileKind.Video,
         [".m4v"] = FileKind.Video, [".flv"] = FileKind.Video, [".3gp"] = FileKind.Video,
+        [".mts"] = FileKind.Video, [".m2ts"] = FileKind.Video, [".mpg"] = FileKind.Video, [".mpeg"] = FileKind.Video, // not .ts: that's TypeScript too
 
         // Audio
         [".mp3"] = FileKind.Audio, [".m4a"] = FileKind.Audio, [".wav"] = FileKind.Audio,
         [".flac"] = FileKind.Audio, [".ogg"] = FileKind.Audio, [".opus"] = FileKind.Audio,
         [".aiff"] = FileKind.Audio, [".aif"] = FileKind.Audio, [".wma"] = FileKind.Audio,
-        [".aac"] = FileKind.Audio,
+        [".aac"] = FileKind.Audio, [".oga"] = FileKind.Audio,
 
         // Archives
         [".zip"] = FileKind.Archive, [".tar"] = FileKind.Archive, [".gz"] = FileKind.Archive,
