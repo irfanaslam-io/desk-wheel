@@ -109,6 +109,9 @@ internal static class Pdfium
     [DllImport(Lib)] public static extern int FPDFBitmap_GetFormat(IntPtr bitmap); // 1 gray, 2 BGR, 3 BGRx, 4 BGRA
     [DllImport(Lib)] public static extern void FPDFPage_SetRotation(IntPtr page, int rotate);
     [DllImport(Lib)] public static extern int FPDFPage_GetRotation(IntPtr page);
+    /// <summary>A point on a rendered picture of the page (pixels, y down) → the page's own coordinates (points, y up).</summary>
+    [DllImport(Lib)] public static extern int FPDF_DeviceToPage(IntPtr page, int startX, int startY, int sizeX, int sizeY, int rotate,
+                                                               int deviceX, int deviceY, out double pageX, out double pageY);
     [DllImport(Lib)] public static extern int FPDF_SaveAsCopy(IntPtr document, IntPtr fileWrite, CULong flags);
 
     // Adding text (page numbers).

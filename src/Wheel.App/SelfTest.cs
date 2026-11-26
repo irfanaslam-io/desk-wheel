@@ -105,6 +105,44 @@ internal static class SelfTest
         Check("PDF flatten", () => pdf is null ? "no PDF" : Produced(Wait(ImageEngine.RebuildPdfAsync(pdf, grey: false)), "PDF"));
         Check("PDF clean", () => pdf is null ? "no PDF" : Produced(PdfTools.Clean(pdf), "PDF"));
 
+        // ---- searchable PDF (the system's text recognition: Apple Vision, Windows OCR or Tesseract) ----
+        if (!OcrEngine.IsAvailable)
+        {
+            report.Add("SKIP  searchable PDF: no text recognition on this machine");
+            Console.WriteLine(report[^1]);
+        }
+        else
+        {
+            Check("searchable PDF from a scan", () =>
+            {
+                var page = Path.Combine(folder, "scan.png");
+                using (var bitmap = new SKBitmap(1700, 2200))
+                {
+                    using (var canvas = new SKCanvas(bitmap))
+                    {
+                        canvas.Clear(SKColors.White);
+                        using var font = new SKFont(SKTypeface.Default, 90);
+                        using var ink = new SKPaint { Color = SKColors.Black, IsAntialias = true };
+                        canvas.DrawText("Quarterly report", 150, 300, font, ink);
+                        canvas.DrawText("Desk Wheel 2026", 150, 450, font, ink);
+                    }
+                    using var data = bitmap.Encode(SKEncodedImageFormat.Png, 100);
+                    File.WriteAllBytes(page, data.ToArray());
+                }
+                var scan = Wait(ImageEngine.ImagesToPdfAsync([page]));
+                if (Produced(scan, "PDF") is { } noPdf) return noPdf;
+                var made = Wait(OcrEngine.MakeSearchablePdfAsync(scan.Outputs[0]));
+                if (!made.Success && made.Error is { } why && why.Contains("language", StringComparison.OrdinalIgnoreCase))
+                {
+                    report.Add($"SKIP  searchable PDF: {why}");
+                    return null;
+                }
+                if (Produced(made, "PDF") is { } problem) return problem;
+                var text = File.ReadAllText(PdfConverter.ToText(made.Outputs[0]));
+                return text.Contains("Quarterly", StringComparison.OrdinalIgnoreCase) && text.Contains("2026") ? null : "text layer: " + text.Trim();
+            });
+        }
+
         // ---- video and audio ----
         var video = Path.Combine(folder, "sample.mkv");
         Check("make a test video", () =>

@@ -1,6 +1,9 @@
 // wheel-ocr: reads the text in an image with Apple's Vision framework (on-device, offline).
 //
 //   wheel-ocr <image>       prints the text, one line per line of text, top to bottom
+//   wheel-ocr --words <image>
+//                           prints each word and where it is: x, y, width, height (fractions of the
+//                           picture from its top-left) and the word, separated by tabs, one per line
 //   wheel-ocr --languages   prints the languages this Mac's Vision can read, one per line
 //   wheel-ocr --remove-background <image> <output.png>
 //                           keeps the subject, makes the background transparent (macOS 14+)
@@ -88,7 +91,40 @@ if args.count == 4 && args[1] == "--remove-background" {
     }
     fail("Removing backgrounds needs macOS 14 (Sonoma) or later.", 5)
 }
-guard args.count == 2 else { fail("usage: wheel-ocr <image> | --languages | --remove-background <image> <output.png>", 2) }
+if args.count == 3 && args[1] == "--words" {
+    let image = loadImage(args[2])
+    let request = makeRequest()
+    do {
+        try VNImageRequestHandler(cgImage: image, options: [:]).perform([request])
+    } catch {
+        fail("Text recognition failed: \(error.localizedDescription)", 4)
+    }
+    // Vision's boxes are fractions of the picture with the origin at the bottom-left: flip to top-left.
+    func row(_ box: CGRect, _ text: String) -> String {
+        String(format: "%.5f\t%.5f\t%.5f\t%.5f\t", box.minX, 1 - box.maxY, box.width, box.height) + text
+    }
+    var out: [String] = []
+    for obs in request.results ?? [] {
+        guard let best = obs.topCandidates(1).first else { continue }
+        let line = best.string
+        var placed = false
+        for word in line.split(whereSeparator: { $0.isWhitespace }) {
+            if let box = (try? best.boundingBox(for: word.startIndex..<word.endIndex))?.boundingBox,
+               box.width > 0, box.height > 0 {
+                out.append(row(box, String(word)))
+                placed = true
+            }
+        }
+        // No word boxes (rare): the whole line in the line's box, so its text is still found.
+        if !placed && !line.trimmingCharacters(in: .whitespaces).isEmpty {
+            out.append(row(obs.boundingBox, line))
+        }
+    }
+    print(out.joined(separator: "\n"))
+    exit(0)
+}
+
+guard args.count == 2 else { fail("usage: wheel-ocr <image> | --words <image> | --languages | --remove-background <image> <output.png>", 2) }
 
 if args[1] == "--languages" {
     let langs = (try? makeRequest().supportedRecognitionLanguages()) ?? []

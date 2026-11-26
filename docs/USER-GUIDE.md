@@ -79,6 +79,7 @@ Reads text in English and Arabic, on your computer. Nothing is uploaded.
 - **Screenshot card → Text:** copies the text in the screenshot you just took.
 - **Tools → Text** on an image: copies its text. With several images, or a folder of them, a `.txt` is saved beside each.
 - **Convert → TXT** on a scanned PDF (pages that are pictures) now reads the pages instead of giving an empty file.
+- **Tools → Searchable** on a scanned PDF: saves `name (searchable).pdf`, which looks exactly the same but has the words as invisible text on top of the picture, in the right places. Search it with Ctrl+F (⌘F), select and copy its text, or let Windows and Spotlight find it by its words. Pages that already have text are left as they are. Works with English and Arabic.
 
 Engines:
 - **Mac:** Apple Vision, the same engine as Live Text. `build-mac.sh` builds a small helper for it, which needs Xcode's command-line tools (`xcode-select --install`). Which languages Vision reads depends on the macOS version; run `./debug-mac.sh` to see them listed in the log.
@@ -156,6 +157,7 @@ In the editor, click **Beautify** (or press F) to put the screenshot on a colour
 | Favicon | Tools (images) | Website icons in a `name (favicon)` folder: favicon.ico (16, 32, 48), PNGs for Apple and Android, `site.webmanifest`, and `favicon.html` with the lines to paste into your page |
 | Base64 | Actions (one image) | Copies the picture as a data URL (`data:image/png;base64,…`) for HTML, CSS or code |
 | Pages… | Tools (PDF) | Keep the pages you type, in that order: `1-3, 7`, `10-end`, `end-1` (backwards), `odd`, `even`. Extracts, reorders or reverses |
+| Searchable | Tools (PDF) | Reads a scanned PDF and adds its words as invisible text: the pages look the same, but the PDF can be searched, and its text selected and copied (English and Arabic). Pages that already have text are skipped. Saved as `name (searchable).pdf` |
 | Delete… | Tools (PDF) | Remove the pages you type: `2, 5-7` |
 | Watermark… | Tools (PDF) | Your text (CONFIDENTIAL, DRAFT, any language) in light grey across the middle of every page; the PDF's own text stays selectable |
 | Images | Tools (PDF) | Saves every picture inside the PDF as PNG in a `name (images)` folder (each picture once) |
@@ -228,7 +230,7 @@ An optional "drag a file, tap ⇧" gesture can be turned on in the menu-bar menu
 | --- | --- |
 | Screenshot | Area, Window, Full, Text, 5 s, Files, History, Settings |
 | Convert | Images: PNG, JPG, WebP, HEIC (Mac), AVIF, ICO, TIFF, GIF, BMP · PDF → PNG / JPG (every page) / TXT (scanned PDFs too) · Video: MP4, WebM, MKV, MOV, GIF, MP3, M4A · Audio: MP3, M4A, WAV, FLAC, OGG, Opus · ZIP ↔ TAR.GZ, Extract · SRT ↔ VTT, TXT · Office: PDF, DOCX, XLSX, PPTX, CSV… · Markdown: Read, HTML |
-| Tools | Images: Compress, 50%, Rotate, No EXIF, Edit, Text, Images → PDF · PDF: Merge, Split, Rotate · Video: Trim…, Compress, 50%, Mute, Frame, Join, Speed…, Rotate, Flip, 720p, 1080p, Sheet · Video + SRT: Subtitles, Burn in · Audio: Trim…, Join, Speed…, Normalize, Mono, Compress · Markdown: Read · ZIP any selection |
+| Tools | Images: Compress, 50%, Rotate, No EXIF, Edit, Text, Images → PDF · PDF: Merge, Pages…, Delete…, Rotate, Compress, Searchable, Watermark…, Lock, Unlock, Split, Numbers, Images, Grey, Flatten, Clean · Video: Trim…, Compress, 50%, Mute, Frame, Join, Speed…, Rotate, Flip, 720p, 1080p, Sheet · Video + SRT: Subtitles, Burn in · Audio: Trim…, Join, Speed…, Normalize, Mono, Compress · Markdown: Read · ZIP any selection |
 | Actions | Copy path, Open terminal here, Reveal, Copy to Desktop, Copy name |
 
 With the optional keyboard gesture on, Shift / ⌘ (Ctrl) / ⌃ (Alt) also switch to Convert / Tools / Actions. Esc closes the wheel.

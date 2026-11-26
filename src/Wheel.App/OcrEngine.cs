@@ -112,6 +112,64 @@ internal static class OcrEngine
         return OcrText.Tidy(result.Output);
     }
 
+    /// <summary>Each word and where it is in the picture, for a searchable PDF.</summary>
+    /// <exception cref="IOException">The engine is missing or failed.</exception>
+    public static async Task<List<OcrWord>> RecognizeWordsAsync(string imagePath, CancellationToken ct = default)
+    {
+        var kind = Detect();
+        if (kind == Kind.None || _exe is null)
+            throw new IOException("No text recognition on this computer. " + InstallHint);
+
+        var result = kind switch
+        {
+            Kind.Vision => await ProcessRunner.RunAsync(_exe, ["--words", imagePath], ct),
+            Kind.Windows => await ProcessRunner.RunAsync(_exe,
+                ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", WindowsScript(), "-Path", imagePath, "-Words"], ct),
+            _ => await ProcessRunner.RunAsync(_exe, [imagePath, "stdout", "-l", _tesseractLangs, "tsv"], ct),
+        };
+        if (result.ExitCode != 0)
+        {
+            var why = result.ErrorTail.Trim();
+            throw new IOException(why.Length > 0 ? why : $"Text recognition stopped (code {result.ExitCode}).");
+        }
+        return kind == Kind.Tesseract ? OcrWords.FromTesseractTsv(result.Output) : OcrWords.ParseTsv(result.Output);
+    }
+
+    /// <summary>
+    /// "name (searchable).pdf": the pages that are pictures (scans, photos of documents) are read, and their
+    /// words go on the page as invisible text, so the PDF can be searched and its text selected and copied.
+    /// Pages that already have text are left as they are.
+    /// </summary>
+    public static async Task<JobResult> MakeSearchablePdfAsync(string pdfPath, CancellationToken ct = default)
+    {
+        var name = Path.GetFileName(pdfPath);
+        IReadOnlyList<int> pages;
+        try { pages = await Task.Run(() => PdfConverter.PagesWithoutText(pdfPath), ct); }
+        catch (Exception ex) when (ex is IOException or InvalidDataException) { return JobResult.Fail($"{name}: {ex.Message}"); }
+        if (pages.Count == 0)
+            return JobResult.Fail($"{name} already has its text: it can be searched and copied as it is.");
+
+        var temp = Path.Combine(Path.GetTempPath(), "wheel-ocr-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var images = await Task.Run(() => PdfConverter.RenderPages(pdfPath, temp, ImageEngine.WriteRenderedPage, pages), ct);
+            var words = new Dictionary<int, IReadOnlyList<OcrWord>>();
+            for (var i = 0; i < images.Count && i < pages.Count; i++)
+                words[pages[i]] = await RecognizeWordsAsync(images[i], ct);
+            if (words.Values.All(w => w.Count == 0))
+                return JobResult.Fail($"No text was found in {name}.");
+            return await Task.Run(() => Wheel.Core.Pdf.SearchablePdf.Write(pdfPath, PdfConverter.PlaceWords(pdfPath, words)), ct);
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException)
+        {
+            return JobResult.Fail($"{name}: {ex.Message}");
+        }
+        finally
+        {
+            try { Directory.Delete(temp, recursive: true); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+        }
+    }
+
     /// <summary>
     /// Text of a scanned PDF: renders each page, then reads it. Pages are separated by a blank line.
     /// </summary>
@@ -180,7 +238,7 @@ internal static class OcrEngine
     /// Arabic; otherwise the user's own languages (English for most).
     /// </summary>
     private const string WindowsOcrScript = """
-        param([Parameter(Mandatory = $true)][string]$Path)
+        param([Parameter(Mandatory = $true)][string]$Path, [switch]$Words)
         $ErrorActionPreference = 'Stop'
         [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
         Add-Type -AssemblyName System.Runtime.WindowsRuntime
@@ -216,10 +274,23 @@ internal static class OcrEngine
             $bitmap = Await ($decoder.GetSoftwareBitmapAsync()) ([Windows.Graphics.Imaging.SoftwareBitmap])
         }
 
+        $script:results = @{}
         function Read-With($engine) {
             if ($null -eq $engine) { return $null }
             $result = Await ($engine.RecognizeAsync($bitmap)) ([Windows.Media.Ocr.OcrResult])
-            ($result.Lines | ForEach-Object { $_.Text }) -join "`n"
+            $text = ($result.Lines | ForEach-Object { $_.Text }) -join "`n"
+            $script:results[$text] = $result
+            $text
+        }
+        # -Words: each word with its box as fractions of the picture from the top-left, tab-separated.
+        function Write-Words($result) {
+            $inv = [Globalization.CultureInfo]::InvariantCulture
+            $w = [double]$bitmap.PixelWidth; $h = [double]$bitmap.PixelHeight
+            $rows = foreach ($line in $result.Lines) { foreach ($word in $line.Words) {
+                $r = $word.BoundingRect
+                [string]::Format($inv, "{0:0.#####}`t{1:0.#####}`t{2:0.#####}`t{3:0.#####}`t{4}", $r.X / $w, $r.Y / $h, $r.Width / $w, $r.Height / $h, $word.Text)
+            } }
+            [Console]::Out.Write(($rows -join "`n"))
         }
         function Is-Arabic([string]$text) {
             $letters = ($text.ToCharArray() | Where-Object { [char]::IsLetter($_) }).Count
@@ -237,6 +308,10 @@ internal static class OcrEngine
         if ($null -eq $default -and $null -eq $arabicLang) {
             [Console]::Error.WriteLine('Windows has no OCR language installed. Add one in Settings > Time & language > Language.')
             exit 4
+        }
+        if ($Words) {
+            if ($null -ne $text -and $script:results.ContainsKey($text)) { Write-Words $script:results[$text] }
+            exit 0
         }
         [Console]::Out.Write($text)
         """;

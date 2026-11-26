@@ -88,7 +88,7 @@ public static class PdfConverter
     }
 
     /// <summary>Renders every page into <paramref name="folder"/> as page-001.png… (for OCR of scanned PDFs).</summary>
-    public static IReadOnlyList<string> RenderPages(string input, string folder, ImageWriter write)
+    public static IReadOnlyList<string> RenderPages(string input, string folder, ImageWriter write, IReadOnlyCollection<int>? only = null)
     {
         lock (Sync)
         {
@@ -98,6 +98,7 @@ public static class PdfConverter
             var outputs = new List<string>();
             for (var i = 0; i < doc.PageCount; i++)
             {
+                if (only is not null && !only.Contains(i)) continue;
                 var output = Path.Combine(folder, $"page-{i + 1:000}.png");
                 RenderPage(doc.Handle, i, output, write);
                 outputs.Add(output);
@@ -176,7 +177,7 @@ public static class PdfConverter
         }
 
         if (sb.Length == 0)
-            throw new InvalidDataException("This PDF has no text to extract (it may be scanned images; OCR is coming later).");
+            throw new InvalidDataException("This PDF has no text to extract: its pages are pictures (a scan). Tools → Searchable reads them.");
 
         var output = OutputPaths.Beside(input, ".txt");
         File.WriteAllText(output, sb.Append('\n').ToString(), new UTF8Encoding(false));
@@ -314,6 +315,80 @@ public static class PdfConverter
             var output = OutputPaths.Beside(input, ".pdf", "rotated");
             File.WriteAllBytes(output, Save(doc.Handle));
             return output;
+        }
+    }
+
+    /// <summary>Pages (0-based) with no text of their own: scanned pages, photos of documents.</summary>
+    public static IReadOnlyList<int> PagesWithoutText(string input)
+    {
+        lock (Sync)
+        {
+            EnsureInit();
+            using var doc = new Document(input);
+            var pages = new List<int>();
+            for (var i = 0; i < doc.PageCount; i++)
+            {
+                var page = FPDF_LoadPage(doc.Handle, i);
+                if (page == IntPtr.Zero) continue;
+                try
+                {
+                    var text = FPDFText_LoadPage(page);
+                    var count = text == IntPtr.Zero ? 0 : FPDFText_CountChars(text);
+                    if (text != IntPtr.Zero) FPDFText_ClosePage(text);
+                    // A few characters (a page number stamped on a scan) still leave the page unsearchable.
+                    if (count < 20) pages.Add(i);
+                }
+                finally
+                {
+                    FPDF_ClosePage(page);
+                }
+            }
+            return pages;
+        }
+    }
+
+    /// <summary>
+    /// Where each recognised word sits on its page, in the page's own coordinates, for an invisible text layer.
+    /// Word boxes are fractions of the rendered page (as <see cref="RenderPages"/> draws it, /Rotate included).
+    /// </summary>
+    public static Dictionary<int, List<Pdf.PlacedWord>> PlaceWords(string input, IReadOnlyDictionary<int, IReadOnlyList<Ocr.OcrWord>> words)
+    {
+        const int size = 100_000;
+        lock (Sync)
+        {
+            EnsureInit();
+            using var doc = new Document(input);
+            var placed = new Dictionary<int, List<Pdf.PlacedWord>>();
+            foreach (var (index, list) in words)
+            {
+                if (index < 0 || index >= doc.PageCount || list.Count == 0) continue;
+                var page = FPDF_LoadPage(doc.Handle, index);
+                if (page == IntPtr.Zero) continue;
+                try
+                {
+                    (double X, double Y) Map(double fx, double fy)
+                    {
+                        FPDF_DeviceToPage(page, 0, 0, size, size, 0, (int)Math.Round(fx * size), (int)Math.Round(fy * size), out var x, out var y);
+                        return (x, y);
+                    }
+                    var onPage = new List<Pdf.PlacedWord>();
+                    foreach (var w in list)
+                    {
+                        var bottomLeft = Map(w.X, w.Y + w.Height);
+                        var bottomRight = Map(w.X + w.Width, w.Y + w.Height);
+                        var topLeft = Map(w.X, w.Y);
+                        onPage.Add(new Pdf.PlacedWord(w.Text, bottomLeft.X, bottomLeft.Y,
+                            bottomRight.X - bottomLeft.X, bottomRight.Y - bottomLeft.Y,
+                            topLeft.X - bottomLeft.X, topLeft.Y - bottomLeft.Y));
+                    }
+                    placed[index] = onPage;
+                }
+                finally
+                {
+                    FPDF_ClosePage(page);
+                }
+            }
+            return placed;
         }
     }
 

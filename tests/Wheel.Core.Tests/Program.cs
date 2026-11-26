@@ -1630,6 +1630,91 @@ TestAsync("video and audio editing with the real ffmpeg: trim, join, speed, shee
     True(rotated.Error.Contains("240x320"), "rotated is portrait");
 });
 
+// ---------------------------------------------------------------- searchable PDF (OCR text layer)
+
+Test("OCR word positions are read from Desk Wheel's format and from Tesseract's TSV", () =>
+{
+    var words = Wheel.Core.Ocr.OcrWords.ParseTsv("0.1\t0.2\t0.3\t0.05\tInvoice\r\nbad line\n0.5\t0.2\t0.1\t0.05\tمرحبا\n0.9\t0.9\t0.5\t0.5\tedge\n");
+    Eq(3, words.Count, "three words");
+    Eq("Invoice", words[0].Text, "text");
+    Eq(0.3, words[0].Width, "width");
+    True(words[2].X + words[2].Width <= 1.0001 && words[2].Y + words[2].Height <= 1.0001, "kept inside the picture");
+    var tsv = "level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext\n" +
+              "1\t1\t0\t0\t0\t0\t0\t0\t1000\t2000\t-1\t\n" +
+              "4\t1\t1\t1\t1\t0\t100\t200\t300\t40\t-1\t\n" +
+              "5\t1\t1\t1\t1\t1\t100\t200\t120\t40\t96.5\tHello\n" +
+              "5\t1\t1\t1\t1\t2\t250\t200\t150\t40\t95\tworld\n" +
+              "5\t1\t1\t1\t1\t3\t450\t200\t10\t40\t0\t \n";
+    var t = Wheel.Core.Ocr.OcrWords.FromTesseractTsv(tsv);
+    Eq(2, t.Count, "words only, blanks skipped");
+    Eq(0.1, t[0].X, "left as a fraction");
+    Eq(0.1, t[0].Y, "top as a fraction");
+    Eq(0.02, t[0].Height, "height as a fraction");
+});
+
+Test("text layers store right-to-left words in drawing order (readers put them back)", () =>
+{
+    Eq("Invoice", Wheel.Core.Ocr.OcrWords.DrawingOrder("Invoice"), "English unchanged");
+    Eq("ابحرم", Wheel.Core.Ocr.OcrWords.DrawingOrder("مرحبا"), "Arabic reversed");
+    Eq("تبُ", Wheel.Core.Ocr.OcrWords.DrawingOrder("بُت"), "a mark stays with its letter");
+    var map = Wheel.Core.Pdf.SearchablePdf.ToUnicodeMap();
+    True(map.Contains("<0600> <06FF> <0600>") && !map.Contains("<D800>"), "Arabic mapped, surrogates left out");
+});
+
+Test("searchable PDF: invisible words land on the page, upright and rotated, Arabic too", () =>
+{
+    var dir = Dir("searchable");
+    var blank = Path.Combine(dir, "scan.pdf");
+    File.WriteAllBytes(blank, MakePdf("", "Already has text here, plenty of it to count"));
+    Eq("0", string.Join(",", PdfConverter.PagesWithoutText(blank)), "only the blank page needs reading");
+
+    var words = new Dictionary<int, IReadOnlyList<Wheel.Core.Ocr.OcrWord>>
+    {
+        [0] = [new("Invoice", 0.1, 0.1, 0.25, 0.03), new("114", 0.4, 0.1, 0.08, 0.03), new("شكرا", 0.6, 0.2, 0.15, 0.03)],
+    };
+    var made = Wheel.Core.Pdf.SearchablePdf.Write(blank, PdfConverter.PlaceWords(blank, words));
+    True(made.Success && made.Outputs[0].EndsWith("scan (searchable).pdf"), made.Error ?? "");
+    var text = File.ReadAllText(PdfConverter.ToText(made.Outputs[0]));
+    True(text.Contains("Invoice 114") && text.Contains("شكرا") && text.Contains("Already has text"), "extracted: " + text);
+    Eq(2, PdfConverter.CountPages(made.Outputs[0]), "pages kept");
+
+    // A page with /Rotate: positions are on the page as shown, so they must be turned into the page's own space.
+    var turned = PdfConverter.Rotate(blank);
+    var onTurned = Wheel.Core.Pdf.SearchablePdf.Write(turned, PdfConverter.PlaceWords(turned, words));
+    True(onTurned.Success, onTurned.Error ?? "");
+    var turnedText = File.ReadAllText(PdfConverter.ToText(onTurned.Outputs[0]));
+    True(turnedText.Contains("Invoice 114") && turnedText.Contains("شكرا"), "rotated page: " + turnedText);
+
+    True(!Wheel.Core.Pdf.SearchablePdf.Write(blank, new Dictionary<int, List<Wheel.Core.Pdf.PlacedWord>>()).Success, "nothing to add is an error");
+});
+
+TestAsync("searchable PDF with Tesseract, when it's installed", async () =>
+{
+    var tesseract = new[] { "/usr/bin/tesseract", "/usr/local/bin/tesseract", "/opt/homebrew/bin/tesseract" }.FirstOrDefault(File.Exists);
+    if (tesseract is null) { Console.WriteLine("        (no Tesseract here: skipped)"); return; }
+    var dir = Dir("tesseract");
+    var source = Path.Combine(dir, "words.pdf");
+    File.WriteAllBytes(source, MakePdf("Quarterly report 2026"));
+    var pages = PdfConverter.RenderPages(source, Path.Combine(dir, "pages"), (path, w, h, px, stride) =>
+    {
+        using var f = File.Create(Path.ChangeExtension(path, ".ppm"));
+        f.Write(System.Text.Encoding.ASCII.GetBytes($"P6\n{w} {h}\n255\n"));
+        var row = new byte[w * 3];
+        for (var y = 0; y < h; y++)
+        {
+            for (var x = 0; x < w; x++) { var i = y * stride + x * 4; row[x * 3] = px[i + 2]; row[x * 3 + 1] = px[i + 1]; row[x * 3 + 2] = px[i]; }
+            f.Write(row);
+        }
+    });
+    var r = await ProcessRunner.RunAsync(tesseract, [Path.ChangeExtension(pages[0], ".ppm"), "stdout", "tsv"]);
+    var words = Wheel.Core.Ocr.OcrWords.FromTesseractTsv(r.Output);
+    True(words.Any(w => w.Text == "Quarterly"), "read: " + string.Join(" ", words.Select(w => w.Text)) + r.ErrorTail);
+    var scan = Path.Combine(dir, "scan.pdf");
+    File.WriteAllBytes(scan, MakePdf(""));
+    var made = Wheel.Core.Pdf.SearchablePdf.Write(scan, PdfConverter.PlaceWords(scan, new Dictionary<int, IReadOnlyList<Wheel.Core.Ocr.OcrWord>> { [0] = words }));
+    True(made.Success && File.ReadAllText(PdfConverter.ToText(made.Outputs[0])).Contains("Quarterly report 2026"), made.Error ?? "text missing");
+});
+
 var failed = 0;
 foreach (var (name, body) in tests)
 {

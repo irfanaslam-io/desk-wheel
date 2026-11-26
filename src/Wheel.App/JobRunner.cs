@@ -211,6 +211,17 @@ internal sealed class JobRunner
                 return;
             }
 
+            if (option.Id == "pdf.ocr")
+            {
+                _notifier.Notify("Reading the pages…", $"Making {Describe(paths)} searchable");
+                var made = new List<JobResult>();
+                foreach (var path in paths)
+                    made.Add(await OcrEngine.MakeSearchablePdfAsync(path));
+                Remember(option, paths, made);
+                Report(made);
+                return;
+            }
+
             if (option.Engine == EngineKind.Ocr)
             {
                 await ReadTextAsync(paths);

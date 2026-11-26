@@ -25,6 +25,7 @@ public static class Suffixes
             "grey" => "grey",
             "watermark" => "watermarked",
             "flatten" => "flattened",
+            "ocr" => "searchable",
             "trim" => "trimmed",
             "720" => "720p",
             "1080" => "1080p",

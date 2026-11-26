@@ -61,6 +61,7 @@ public static class OptionRegistry
             T("pdf.delete", "Delete…", "Remove pages: type 2, 5-7", EngineKind.PdfEdit, ".pdf"),
             T("pdf.rotate", "Rotate", "Rotate every page 90° clockwise", EngineKind.Pdf, ".pdf"),
             T("pdf.compress", "Compress", "Make it smaller: pictures at print quality, text untouched", EngineKind.PdfEdit, ".pdf"),
+            T("pdf.ocr", "Searchable", "Make a scanned PDF searchable: its text can be found, selected and copied (English and Arabic)", EngineKind.Ocr, ".pdf"),
             T("pdf.watermark", "Watermark…", "Text such as CONFIDENTIAL or DRAFT across every page", EngineKind.PdfEdit, ".pdf"),
             T("pdf.protect", "Lock", "Add a password (AES-256)", EngineKind.PdfEdit, ".pdf"),
             T("pdf.unlock", "Unlock", "Remove the password (you'll need it)", EngineKind.PdfEdit, ".pdf"),
