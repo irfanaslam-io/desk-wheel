@@ -10,3 +10,4 @@ engines/ffmpeg/
 scripts/icons/build/
 wheel-debug.txt
 .DS_Store
+.cache/

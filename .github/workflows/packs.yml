@@ -1,0 +1,41 @@
+name: Media player packs
+
+# The optional downloads the app fetches when someone first opens the media player (LibVLC, LGPL).
+# Published once per pack version to their own release; never replaced, because the app pins each file's SHA-256.
+on:
+  push:
+    branches: [main]
+    paths: [scripts/make-vlc-packs.py, .github/workflows/packs.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: write   # to publish the packs release
+
+jobs:
+  packs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the packs (VideoLAN's LibVLC NuGet packages, pinned by SHA-512; GPL plugins left out)
+        run: python3 scripts/make-vlc-packs.py --out packs
+      - name: Publish them (once per version)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(python3 -c "import json;print(json.load(open('packs/packs.json'))['version'])")
+          TAG="packs-media-player-$VERSION"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "$TAG is already published; packs are never replaced. Change PACK_VERSION to publish new ones."
+            exit 0
+          fi
+          {
+            echo "**You don't need to download anything here.** Desk Wheel downloads its media player engine by itself, the first time you open a video or song in the player, and only if you say yes."
+            echo
+            echo "LibVLC $(python3 -c "import json;print(json.load(open('packs/packs.json'))['vlc'])") by VideoLAN (LGPL-2.1-or-later), taken unchanged from VideoLAN's own NuGet packages with only the files playback needs. Desk Wheel checks each download against a SHA-256 built into the app before using it. Source code and details: README.txt in each zip."
+            echo
+            echo "| Pack | Size | SHA-256 |"
+            echo "|---|---|---|"
+            python3 -c "import json;m=json.load(open('packs/packs.json'));[print(f\"| {r} | {f['size']/1e6:.1f} MB | \`{f['sha256']}\` |\") for r,f in m['files'].items()]"
+          } > notes.md
+          gh release create "$TAG" packs/*.zip packs/packs.json --title "Media player engine $VERSION (downloaded by the app)" \
+            --notes-file notes.md --latest=false --target "$GITHUB_SHA"
