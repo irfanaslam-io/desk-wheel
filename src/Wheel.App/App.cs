@@ -769,9 +769,9 @@ internal sealed class App : Application, INotifier, IScreenToolHost
             else if (option.Id is "vid.play" or "aud.play")
                 OpenPlayer(paths);
             else if (option.Id == "pdf.open")
-                foreach (var pdf in paths.Take(5)) _ = OpenPdfAsync(pdf);
+                foreach (var pdf in System.Linq.Enumerable.Take(paths, 5)) _ = OpenPdfAsync(pdf);
             else if (option.Id == "arc.open")
-                foreach (var archive in paths.Take(5)) OpenArchive(archive);
+                foreach (var archive in System.Linq.Enumerable.Take(paths, 5)) OpenArchive(archive);
             else if (option.Id == "act.disk")
                 OpenDisk(paths.Count == 1 && System.IO.Directory.Exists(paths[0]) ? paths[0] : System.IO.Path.GetDirectoryName(paths[0]));
             else
