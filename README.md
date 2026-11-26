@@ -117,6 +117,7 @@ Desk Wheel checks for a new version at most twice a day and asks before installi
 | [User guide](docs/USER-GUIDE.md) | Every tool, setting and wheel in detail, plus known limits |
 | [Building and testing](docs/BUILDING.md) | Build from source on Windows and macOS, architecture and the test checklist |
 | [Releasing](docs/RELEASING.md) | Signing, the Microsoft Store, publishing releases and updates, usage statistics |
+| [Store listing](docs/STORE-LISTING.md) | Everything to paste into Partner Center for a Microsoft Store submission |
 | [Privacy policy](https://irfanaslam.io/desk-wheel/privacy) | What is and isn't sent |
 | [Security policy](SECURITY.md) | How to report a vulnerability |
 

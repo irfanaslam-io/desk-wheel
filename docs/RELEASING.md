@@ -1,5 +1,7 @@
 # Releasing Desk Wheel
 
+For the Microsoft Store listing text, answers and images, see [STORE-LISTING.md](STORE-LISTING.md).
+
 For maintainers: how Desk Wheel is signed, published and updated.
 
 ## How people get it
