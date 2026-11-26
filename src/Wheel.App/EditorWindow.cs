@@ -410,6 +410,15 @@ internal sealed class EditorWindow : Window
     /// <summary>Copies Skia pixels straight into an Avalonia bitmap (no PNG round trip).</summary>
     internal static WriteableBitmap ToAvalonia(SKBitmap bitmap)
     {
+        // The screen copy below is BGRA; anything else (decoded pictures are RGBA) is converted first,
+        // or red and blue swap places.
+        if (bitmap.ColorType != SKColorType.Bgra8888 || bitmap.AlphaType == SKAlphaType.Unpremul)
+        {
+            using var bgra = new SKBitmap(new SKImageInfo(bitmap.Width, bitmap.Height, SKColorType.Bgra8888, SKAlphaType.Premul));
+            if (!bitmap.CopyTo(bgra, SKColorType.Bgra8888))
+                using (var canvas = new SKCanvas(bgra)) canvas.DrawBitmap(bitmap, 0, 0);
+            return ToAvalonia(bgra);
+        }
         var wb = new WriteableBitmap(new PixelSize(bitmap.Width, bitmap.Height), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Premul);
         using var fb = wb.Lock();
         var rowBytes = bitmap.Width * 4;
