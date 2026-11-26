@@ -32,6 +32,8 @@ SetupIconFile=..\icons\AppIcon.ico
 ; Shown before installing: free for individuals and small businesses.
 LicenseFile=..\..\LICENSE.md
 CloseApplications=yes
+; Tells File Explorer about the "Open with" entries below.
+ChangesAssociations=yes
 #ifdef Sign
 ; Signs Setup.exe, the helper it runs from the temporary folder (setup.tmp) and the uninstaller, so
 ; Smart App Control and Attack Surface Reduction rules don't block them. build.ps1 passes the command.
@@ -72,6 +74,58 @@ Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: 
   ValueData: """{app}\DeskWheel.exe"""; Tasks: startup; Flags: uninsdeletevalue
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueName: "DeskWheel"; Flags: uninsdeletevalue dontcreatekey
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueName: "Wheel"; ValueType: none; Flags: deletevalue
+
+; Picture viewer: "Open with › Desk Wheel" for pictures, and listed under Settings › Apps › Default apps.
+; Nothing is taken over: people choose Desk Wheel there if they want it as their viewer.
+Root: HKCU; Subkey: "Software\Classes\DeskWheel.Picture"; ValueType: string; ValueData: "Picture"; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\Classes\DeskWheel.Picture"; ValueType: string; ValueName: "FriendlyTypeName"; ValueData: "Picture"
+Root: HKCU; Subkey: "Software\Classes\DeskWheel.Picture\DefaultIcon"; ValueType: string; ValueData: """{app}\DeskWheel.exe"",0"
+Root: HKCU; Subkey: "Software\Classes\DeskWheel.Picture\shell\open"; ValueType: string; ValueName: "FriendlyAppName"; ValueData: "Desk Wheel"
+Root: HKCU; Subkey: "Software\Classes\DeskWheel.Picture\shell\open\command"; ValueType: string; ValueData: """{app}\DeskWheel.exe"" --view ""%1"""
+Root: HKCU; Subkey: "Software\Classes\Applications\DeskWheel.exe"; ValueType: string; ValueName: "FriendlyAppName"; ValueData: "Desk Wheel"; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\Classes\Applications\DeskWheel.exe\shell\open\command"; ValueType: string; ValueData: """{app}\DeskWheel.exe"" --view ""%1"""
+Root: HKCU; Subkey: "Software\DeskWheel\Capabilities"; ValueType: string; ValueName: "ApplicationName"; ValueData: "Desk Wheel"; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\DeskWheel\Capabilities"; ValueType: string; ValueName: "ApplicationDescription"; ValueData: "Picture viewer with Next and Back, and offline file tools."
+Root: HKCU; Subkey: "Software\RegisteredApplications"; ValueType: string; ValueName: "Desk Wheel"; ValueData: "Software\DeskWheel\Capabilities"; Flags: uninsdeletevalue
+Root: HKCU; Subkey: "Software\\Classes\\.jpg\\OpenWithProgids"; ValueType: string; ValueName: "DeskWheel.Picture"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKCU; Subkey: "Software\\Classes\\Applications\\DeskWheel.exe\\SupportedTypes"; ValueType: string; ValueName: ".jpg"; ValueData: ""
+Root: HKCU; Subkey: "Software\\DeskWheel\\Capabilities\\FileAssociations"; ValueType: string; ValueName: ".jpg"; ValueData: "DeskWheel.Picture"
+Root: HKCU; Subkey: "Software\\Classes\\.jpeg\\OpenWithProgids"; ValueType: string; ValueName: "DeskWheel.Picture"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKCU; Subkey: "Software\\Classes\\Applications\\DeskWheel.exe\\SupportedTypes"; ValueType: string; ValueName: ".jpeg"; ValueData: ""
+Root: HKCU; Subkey: "Software\\DeskWheel\\Capabilities\\FileAssociations"; ValueType: string; ValueName: ".jpeg"; ValueData: "DeskWheel.Picture"
+Root: HKCU; Subkey: "Software\\Classes\\.png\\OpenWithProgids"; ValueType: string; ValueName: "DeskWheel.Picture"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKCU; Subkey: "Software\\Classes\\Applications\\DeskWheel.exe\\SupportedTypes"; ValueType: string; ValueName: ".png"; ValueData: ""
+Root: HKCU; Subkey: "Software\\DeskWheel\\Capabilities\\FileAssociations"; ValueType: string; ValueName: ".png"; ValueData: "DeskWheel.Picture"
+Root: HKCU; Subkey: "Software\\Classes\\.gif\\OpenWithProgids"; ValueType: string; ValueName: "DeskWheel.Picture"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKCU; Subkey: "Software\\Classes\\Applications\\DeskWheel.exe\\SupportedTypes"; ValueType: string; ValueName: ".gif"; ValueData: ""
+Root: HKCU; Subkey: "Software\\DeskWheel\\Capabilities\\FileAssociations"; ValueType: string; ValueName: ".gif"; ValueData: "DeskWheel.Picture"
+Root: HKCU; Subkey: "Software\\Classes\\.bmp\\OpenWithProgids"; ValueType: string; ValueName: "DeskWheel.Picture"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKCU; Subkey: "Software\\Classes\\Applications\\DeskWheel.exe\\SupportedTypes"; ValueType: string; ValueName: ".bmp"; ValueData: ""
+Root: HKCU; Subkey: "Software\\DeskWheel\\Capabilities\\FileAssociations"; ValueType: string; ValueName: ".bmp"; ValueData: "DeskWheel.Picture"
+Root: HKCU; Subkey: "Software\\Classes\\.webp\\OpenWithProgids"; ValueType: string; ValueName: "DeskWheel.Picture"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKCU; Subkey: "Software\\Classes\\Applications\\DeskWheel.exe\\SupportedTypes"; ValueType: string; ValueName: ".webp"; ValueData: ""
+Root: HKCU; Subkey: "Software\\DeskWheel\\Capabilities\\FileAssociations"; ValueType: string; ValueName: ".webp"; ValueData: "DeskWheel.Picture"
+Root: HKCU; Subkey: "Software\\Classes\\.heic\\OpenWithProgids"; ValueType: string; ValueName: "DeskWheel.Picture"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKCU; Subkey: "Software\\Classes\\Applications\\DeskWheel.exe\\SupportedTypes"; ValueType: string; ValueName: ".heic"; ValueData: ""
+Root: HKCU; Subkey: "Software\\DeskWheel\\Capabilities\\FileAssociations"; ValueType: string; ValueName: ".heic"; ValueData: "DeskWheel.Picture"
+Root: HKCU; Subkey: "Software\\Classes\\.heif\\OpenWithProgids"; ValueType: string; ValueName: "DeskWheel.Picture"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKCU; Subkey: "Software\\Classes\\Applications\\DeskWheel.exe\\SupportedTypes"; ValueType: string; ValueName: ".heif"; ValueData: ""
+Root: HKCU; Subkey: "Software\\DeskWheel\\Capabilities\\FileAssociations"; ValueType: string; ValueName: ".heif"; ValueData: "DeskWheel.Picture"
+Root: HKCU; Subkey: "Software\\Classes\\.avif\\OpenWithProgids"; ValueType: string; ValueName: "DeskWheel.Picture"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKCU; Subkey: "Software\\Classes\\Applications\\DeskWheel.exe\\SupportedTypes"; ValueType: string; ValueName: ".avif"; ValueData: ""
+Root: HKCU; Subkey: "Software\\DeskWheel\\Capabilities\\FileAssociations"; ValueType: string; ValueName: ".avif"; ValueData: "DeskWheel.Picture"
+Root: HKCU; Subkey: "Software\\Classes\\.tif\\OpenWithProgids"; ValueType: string; ValueName: "DeskWheel.Picture"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKCU; Subkey: "Software\\Classes\\Applications\\DeskWheel.exe\\SupportedTypes"; ValueType: string; ValueName: ".tif"; ValueData: ""
+Root: HKCU; Subkey: "Software\\DeskWheel\\Capabilities\\FileAssociations"; ValueType: string; ValueName: ".tif"; ValueData: "DeskWheel.Picture"
+Root: HKCU; Subkey: "Software\\Classes\\.tiff\\OpenWithProgids"; ValueType: string; ValueName: "DeskWheel.Picture"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKCU; Subkey: "Software\\Classes\\Applications\\DeskWheel.exe\\SupportedTypes"; ValueType: string; ValueName: ".tiff"; ValueData: ""
+Root: HKCU; Subkey: "Software\\DeskWheel\\Capabilities\\FileAssociations"; ValueType: string; ValueName: ".tiff"; ValueData: "DeskWheel.Picture"
+Root: HKCU; Subkey: "Software\\Classes\\.ico\\OpenWithProgids"; ValueType: string; ValueName: "DeskWheel.Picture"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKCU; Subkey: "Software\\Classes\\Applications\\DeskWheel.exe\\SupportedTypes"; ValueType: string; ValueName: ".ico"; ValueData: ""
+Root: HKCU; Subkey: "Software\\DeskWheel\\Capabilities\\FileAssociations"; ValueType: string; ValueName: ".ico"; ValueData: "DeskWheel.Picture"
+Root: HKCU; Subkey: "Software\\Classes\\.jfif\\OpenWithProgids"; ValueType: string; ValueName: "DeskWheel.Picture"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKCU; Subkey: "Software\\Classes\\Applications\\DeskWheel.exe\\SupportedTypes"; ValueType: string; ValueName: ".jfif"; ValueData: ""
+Root: HKCU; Subkey: "Software\\DeskWheel\\Capabilities\\FileAssociations"; ValueType: string; ValueName: ".jfif"; ValueData: "DeskWheel.Picture"
 
 [Run]
 Filename: "{app}\DeskWheel.exe"; Description: "Start Desk Wheel now"; Flags: nowait postinstall skipifsilent

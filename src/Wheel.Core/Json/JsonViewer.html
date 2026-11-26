@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:">
+<title>{{TITLE}} · Desk Wheel</title>
+<style>
+:root{--bg:#fff;--panel:#f6f8fa;--line:#d0d7de;--text:#1f2328;--muted:#656d76;--key:#8250df;--str:#0a7d32;--num:#0550ae;--bool:#bc4c00;--null:#8c959f;--hover:#eaeef2;--mark:#fff1a8;--markon:#ffd33d;--accent:#E8622C;--btn:#fff}
+@media (prefers-color-scheme:dark){:root{--bg:#0d1117;--panel:#161b22;--line:#30363d;--text:#e6edf3;--muted:#8d96a0;--key:#d2a8ff;--str:#7ee787;--num:#79c0ff;--bool:#ffa657;--null:#8d96a0;--hover:#1f242c;--mark:#5a4a00;--markon:#9e6a03;--btn:#21262d}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif}
+header{position:sticky;top:0;z-index:5;background:var(--panel);border-bottom:1px solid var(--line);padding:10px 16px;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
+.title{display:flex;align-items:baseline;gap:10px;min-width:0;flex:1 1 260px}
+.title b{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.title span{color:var(--muted);font-size:12.5px;white-space:nowrap}
+.tools{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+button{font:inherit;font-size:13px;color:var(--text);background:var(--btn);border:1px solid var(--line);border-radius:6px;padding:4px 10px;cursor:pointer}
+button:hover{border-color:var(--muted)}
+button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.search{display:flex;align-items:center;gap:6px}
+input[type=search]{font:inherit;font-size:13px;width:220px;max-width:46vw;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:4px 9px}
+input[type=search]:focus{outline:2px solid var(--accent);outline-offset:-1px}
+#count{color:var(--muted);font-size:12.5px;min-width:64px}
+#path{position:sticky;top:var(--hh,52px);z-index:4;background:var(--bg);border-bottom:1px solid var(--line);padding:4px 16px;font:12.5px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:26px}
+main{padding:10px 8px 60px}
+.tree{font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace}
+.row{display:flex;align-items:flex-start;padding:0 8px;border-radius:4px;cursor:default}
+.row:hover{background:var(--hover)}
+.tw{width:16px;flex:none;color:var(--muted);text-align:center;cursor:pointer;user-select:none}
+.k{color:var(--key);cursor:pointer}
+.k:hover{text-decoration:underline}
+.s{color:var(--str);white-space:pre-wrap;word-break:break-word}
+.n{color:var(--num)}.b{color:var(--bool)}.z{color:var(--null);font-style:italic}
+.p{color:var(--muted)}
+.c{color:var(--muted);font-size:11.5px;margin-left:6px;cursor:pointer}
+.kids{margin-left:18px;border-left:1px dotted var(--line);padding-left:2px}
+a.s{text-decoration:underline;text-decoration-color:color-mix(in srgb,var(--str) 45%,transparent)}
+mark{background:var(--mark);color:inherit;border-radius:2px}
+mark.on{background:var(--markon);outline:2px solid var(--markon)}
+pre.raw{margin:0;padding:6px 12px;font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre-wrap;word-break:break-word}
+.error{margin:16px;border:1px solid #cf222e;border-radius:8px;overflow:hidden}
+.error h2{margin:0;padding:10px 14px;font-size:14px;background:color-mix(in srgb,#cf222e 14%,var(--bg));color:var(--text)}
+.error pre{margin:0;padding:12px 14px;font:12.5px/1.5 ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;word-break:break-word;max-height:70vh;overflow:auto}
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#1b1c20;color:#fff;font-size:13px;padding:7px 14px;border-radius:999px;opacity:0;transition:opacity .2s;pointer-events:none}
+#toast.show{opacity:.95}
+footer{color:var(--muted);font-size:12px;text-align:center;padding:16px}
+@media (max-width:600px){header{padding:8px 10px}.title{flex-basis:100%}input[type=search]{width:150px}}
+</style>
+</head>
+<body>
+<header id="bar">
+  <div class="title"><b>{{TITLE}}</b><span id="summary">{{SIZE}}</span></div>
+  <div class="tools">
+    <button id="tree" class="on" title="Tree view (T)">Tree</button>
+    <button id="raw" title="Formatted text (R)">Text</button>
+    <button id="expand" title="Expand everything (E)">Expand all</button>
+    <button id="collapse" title="Collapse to the top level (C)">Collapse</button>
+    <button id="copy" title="Copy the formatted JSON">Copy</button>
+  </div>
+  <div class="search"><input id="q" type="search" placeholder="Search keys and values  ( / )" aria-label="Search"><span id="count"></span></div>
+</header>
+<div id="path" title="Click a key to copy its path">$</div>
+<main id="main"></main>
+<footer>Shown by Desk Wheel · nothing leaves your computer</footer>
+<div id="toast"></div>
+<script type="application/json" id="data">{{DATA}}</script>
+<script>
+"use strict";
+const ERROR = {{ERROR}};
+const TREE_OK = {{TREE}};
+const $ = id => document.getElementById(id);
+const main = $("main");
+let data = null, mode = "tree", matches = [], current = -1, query = "";
+const open = new Set(["$"]);           // paths of expanded nodes
+const MAX_KIDS = 500;                  // children rendered per click on "show more"
+
+function toast(text){ const t=$("toast"); t.textContent=text; t.classList.add("show"); clearTimeout(toast.h); toast.h=setTimeout(()=>t.classList.remove("show"),1400); }
+function el(tag, cls, text){ const e=document.createElement(tag); if(cls) e.className=cls; if(text!==undefined) e.textContent=text; return e; }
+function kind(v){ return v===null?"null":Array.isArray(v)?"array":typeof v; }
+function childPath(path, key, isArray){ return isArray ? `${path}[${key}]` : /^[A-Za-z_$][\w$]*$/.test(key) ? `${path}.${key}` : `${path}[${JSON.stringify(key)}]`; }
+function describe(v){ const k=kind(v); return k==="array" ? `${v.length} item${v.length===1?"":"s"}` : k==="object" ? `${Object.keys(v).length} key${Object.keys(v).length===1?"":"s"}` : k; }
+
+// Highlights the search text inside a piece of text (text nodes only: nothing from the file is ever parsed as HTML).
+function withMarks(parent, text){
+  if(!query){ parent.append(text); return; }
+  const lower=text.toLowerCase(); let i=0, at;
+  while((at=lower.indexOf(query,i))>=0){ parent.append(text.slice(i,at)); parent.append(el("mark","",text.slice(at,at+query.length))); i=at+query.length; }
+  parent.append(text.slice(i));
+}
+
+function valueNode(v){
+  const k=kind(v);
+  if(k==="string"){
+    const quoted=JSON.stringify(v);
+    if(/^https?:\/\/\S+$/.test(v) && v.length<2000){ const a=el("a","s"); a.href=v; a.target="_blank"; a.rel="noopener noreferrer"; withMarks(a,quoted); return a; }
+    const s=el("span","s"); withMarks(s,quoted); return s;
+  }
+  if(k==="array"||k==="object") return el("span","p",k==="array"?"[]":"{}");
+  const s=el("span", k==="number"?"n":k==="boolean"?"b":"z"); withMarks(s,String(v)); return s;
+}
+
+function row(key, v, path, isArrayItem, last){
+  const wrap=el("div"); const r=el("div","row"); r.dataset.path=path; wrap.append(r);
+  const k=kind(v), container=(k==="object"||k==="array") && Object.keys(v).length>0;
+  const tw=el("span","tw", container ? (open.has(path)?"▾":"▸") : ""); r.append(tw);
+  const line=el("span");
+  if(key!==null){
+    const ks=el("span", isArrayItem?"p":"k"); withMarks(ks, isArrayItem?String(key):JSON.stringify(key)); line.append(ks, el("span","p",": "));
+    if(!isArrayItem){ ks.title="Copy path"; ks.addEventListener("click",e=>{ e.stopPropagation(); copyText(path,"Path copied: "+path); }); }
+  }
+  if(container){
+    const [o,c]=k==="array"?["[","]"]:["{","}"];
+    if(open.has(path)){ line.append(el("span","p",o)); }
+    else { line.append(el("span","p",o+" … "+c+(last?"":","))); }
+    const badge=el("span","c",describe(v)); line.append(badge);
+    r.append(line);
+    const toggle=()=>{ open.has(path)?open.delete(path):open.add(path); const n=row(key,v,path,isArrayItem,last); wrap.replaceWith(n); };
+    tw.addEventListener("click",toggle); badge.addEventListener("click",toggle);
+    r.addEventListener("dblclick",toggle);
+    if(open.has(path)){
+      const kids=el("div","kids"); wrap.append(kids);
+      const entries=k==="array" ? v.map((x,i)=>[i,x]) : Object.entries(v);
+      let shown=0;
+      const more=()=>{
+        const end=Math.min(entries.length, shown+MAX_KIDS);
+        for(;shown<end;shown++){ const [ck,cv]=entries[shown]; kids.append(row(ck,cv,childPath(path,ck,k==="array"),k==="array",shown===entries.length-1)); }
+        if(shown<entries.length){ const b=el("button","",`Show ${Math.min(MAX_KIDS,entries.length-shown)} more of ${entries.length-shown}`); b.style.margin="4px 0 4px 22px"; b.onclick=()=>{ b.remove(); more(); }; kids.append(b); }
+      };
+      more();
+      const close=el("div","row"); close.append(el("span","tw",""), el("span","p",c+(last?"":","))); wrap.append(close);
+    }
+  } else {
+    line.append(valueNode(v)); if(!last) line.append(el("span","p",","));
+    r.append(line);
+    r.title="Double-click to copy the value";
+    r.addEventListener("dblclick",()=>copyText(typeof v==="string"?v:JSON.stringify(v),"Value copied"));
+  }
+  r.addEventListener("mouseenter",()=>{ $("path").textContent=path; });
+  return wrap;
+}
+
+function render(){
+  main.textContent="";
+  if(mode==="raw" || !TREE_OK){
+    const pre=el("pre","raw"); withMarks(pre, JSON.stringify(data,null,2)); main.append(pre);
+  } else {
+    const t=el("div","tree"); t.append(row(null,data,"$",false,true)); main.append(t);
+  }
+  const marks=[...main.querySelectorAll("mark")];
+  $("count").textContent = query ? (marks.length ? `${marks.length}${marks.length>=999?"+":""} found` : "not found") : "";
+  current=-1; if(marks.length) step(1);
+}
+
+// Search: expand every node that leads to a match (up to 1000 matches), then highlight them.
+function search(text){
+  query=text.trim().toLowerCase(); matches=[];
+  if(query){
+    const walk=(v,path)=>{
+      if(matches.length>=1000) return false;
+      const k=kind(v);
+      if(k==="object"||k==="array"){
+        let hit=false;
+        for(const [ck,cv] of (k==="array"?v.map((x,i)=>[i,x]):Object.entries(v))){
+          const p=childPath(path,ck,k==="array");
+          const keyHit=k==="object" && String(ck).toLowerCase().includes(query);
+          if(walk(cv,p)||keyHit){ hit=true; if(keyHit) matches.push(p); }
+        }
+        if(hit) open.add(path);
+        return hit;
+      }
+      const s=(k==="string"?JSON.stringify(v):String(v)).toLowerCase();
+      if(s.includes(query)){ matches.push(path); return true; }
+      return false;
+    };
+    walk(data,"$");
+  }
+  render();
+}
+
+function step(dir){
+  const marks=[...main.querySelectorAll("mark")]; if(!marks.length) return;
+  marks[current]?.classList.remove("on");
+  current=(current+dir+marks.length)%marks.length;
+  marks[current].classList.add("on"); marks[current].scrollIntoView({block:"center"});
+  $("count").textContent=`${current+1} of ${marks.length}`;
+}
+
+function setAll(expand){
+  open.clear(); open.add("$");
+  if(expand){ let n=0; const walk=(v,p)=>{ const k=kind(v); if((k==="object"||k==="array") && n++<20000){ open.add(p); for(const [ck,cv] of (k==="array"?v.map((x,i)=>[i,x]):Object.entries(v))) walk(cv,childPath(p,ck,k==="array")); } }; walk(data,"$"); }
+  else if(data && typeof data==="object"){ /* top level stays open */ }
+  render();
+}
+
+function copyText(text, message){
+  const done=()=>toast(message);
+  if(navigator.clipboard?.writeText) navigator.clipboard.writeText(text).then(done,()=>fallback());
+  else fallback();
+  function fallback(){ const t=el("textarea"); t.value=text; document.body.append(t); t.select(); document.execCommand("copy"); t.remove(); done(); }
+}
+
+function setMode(m){ mode=m; $("tree").classList.toggle("on",m==="tree"); $("raw").classList.toggle("on",m==="raw"); render(); }
+
+if(ERROR){
+  document.querySelector(".tools").hidden=true; document.querySelector(".search").hidden=true; $("path").hidden=true;
+  const box=el("div","error"); const nl=ERROR.indexOf("\n\n");
+  box.append(el("h2","",nl>0?ERROR.slice(0,nl):ERROR)); if(nl>0) box.append(el("pre","",ERROR.slice(nl+2)));
+  main.append(box);
+} else {
+  data=JSON.parse($("data").textContent);
+  $("summary").textContent = `{{SIZE}} · ${kind(data)==="array"||kind(data)==="object" ? describe(data) : kind(data)}`;
+  // Small files open fully; bigger ones open two levels deep.
+  if($("data").textContent.length<20000) setAll(true);
+  else { if(data && typeof data==="object") for(const [k] of (Array.isArray(data)?data.map((x,i)=>[i,x]):Object.entries(data)).slice(0,MAX_KIDS)) open.add(childPath("$",k,Array.isArray(data))); render(); }
+  if(!TREE_OK){ $("tree").hidden=true; $("raw").hidden=true; $("expand").hidden=true; $("collapse").hidden=true; setMode("raw"); }
+  $("tree").onclick=()=>setMode("tree"); $("raw").onclick=()=>setMode("raw");
+  $("expand").onclick=()=>setAll(true); $("collapse").onclick=()=>setAll(false);
+  $("copy").onclick=()=>copyText(JSON.stringify(data,null,2),"Formatted JSON copied");
+  let timer; $("q").addEventListener("input",e=>{ clearTimeout(timer); timer=setTimeout(()=>search(e.target.value),180); });
+  $("q").addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); step(e.shiftKey?-1:1); } if(e.key==="Escape"){ e.target.value=""; search(""); e.target.blur(); } });
+  document.addEventListener("keydown",e=>{
+    if(e.target.tagName==="INPUT") return;
+    if(e.key==="/"||((e.ctrlKey||e.metaKey)&&e.key==="f")){ e.preventDefault(); $("q").focus(); $("q").select(); }
+    else if(e.key==="t") setMode("tree"); else if(e.key==="r") setMode("raw");
+    else if(e.key==="e") setAll(true); else if(e.key==="c") setAll(false);
+  });
+}
+const fit=()=>document.documentElement.style.setProperty("--hh",$("bar").offsetHeight+"px"); fit(); addEventListener("resize",fit);
+</script>
+</body>
+</html>

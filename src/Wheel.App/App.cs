@@ -54,7 +54,9 @@ internal sealed class App : Application, INotifier, IScreenToolHost
             });
         _jobs = new JobRunner(this, _platform);
 
-        if (Program.Files.Length > 0)
+        if (Program.View is { } view)
+            StartViewer(view);
+        else if (Program.Files.Length > 0)
             StartOneShot(Program.Files);
         else
             StartBackground();
@@ -251,9 +253,12 @@ internal sealed class App : Application, INotifier, IScreenToolHost
             await Task.Delay(120); // let them disappear from the screen
 
             var path = CaptureNaming.NewPath(CaptureFolder, DateTime.Now);
-            if (kind == CaptureKind.Area && _settings.EditAfterCapture)
+            // Windows: area and window always use Desk Wheel's own overlay (never the Snipping Tool).
+            // Mark-up turned off in Settings: it saves as soon as the area or window is chosen.
+            if ((kind == CaptureKind.Area && (_settings.EditAfterCapture || _platform.OwnCaptureOverlay))
+                || (kind == CaptureKind.Window && _platform.OwnCaptureOverlay))
             {
-                await SnipAsync(path);
+                await SnipAsync(path, pickWindows: kind == CaptureKind.Window, finishOnSelect: !_settings.EditAfterCapture);
                 return;
             }
             var (ok, problem) = await _platform.CaptureAsync(kind, path);
@@ -290,16 +295,21 @@ internal sealed class App : Application, INotifier, IScreenToolHost
 
     private Window? _screensProbe;
 
-    /// <summary>Area screenshot marked up in place (<see cref="SnipWindow"/>), then saved, copied, pinned or edited.</summary>
-    private async Task SnipAsync(string path)
+    /// <summary>
+    /// Area or window screenshot in Desk Wheel's own overlay (<see cref="SnipWindow"/>), marked up in place,
+    /// then saved, copied, pinned or edited.
+    /// </summary>
+    private async Task SnipAsync(string path, bool pickWindows = false, bool finishOnSelect = false)
     {
-        Usage.Screen("snip");
+        Usage.Screen(pickWindows ? "snip-window" : "snip");
         var anyWindow = (Window?)_button ?? (_screensProbe ??= new Window());
+        // The window list comes first: it must describe the screen as it is in the frozen picture.
+        var windows = pickWindows ? _platform.VisibleWindows() : null;
         if (await Tools.FreezeScreenAsync(anyWindow) is not { } frozen) return;
         SnipResult? result;
         try
         {
-            result = await SnipWindow.ShowAsync(frozen.Picture, frozen.Screen.Bounds, frozen.Screen.Scaling);
+            result = await SnipWindow.ShowAsync(frozen.Picture, frozen.Screen.Bounds, frozen.Screen.Scaling, windows, finishOnSelect);
         }
         finally
         {
@@ -332,15 +342,18 @@ internal sealed class App : Application, INotifier, IScreenToolHost
                 await OpenEditorAsync(path);
                 break;
             default:
-                Notify(copy ? "Copied and saved" : "Screenshot saved", System.IO.Path.GetFileName(path) + " · click to show it", reveal: path);
+                if (finishOnSelect && _settings.ShowCapturePreview)
+                    ShowPreview(path, recorded: true);
+                else
+                    Notify(copy ? "Copied and saved" : "Screenshot saved", System.IO.Path.GetFileName(path) + " · click to show it", reveal: path);
                 break;
         }
     }
 
-    private void ShowPreview(string path)
+    private void ShowPreview(string path, bool recorded = false)
     {
         Log.Trace($"  Saved {path}");
-        AppHistory.Record("Screenshot", path);
+        if (!recorded) AppHistory.Record("Screenshot", path);
         var preview = new PreviewWindow(path);
         Usage.Screen("preview-card");
         preview.CopyRequested += async () =>
@@ -562,6 +575,23 @@ internal sealed class App : Application, INotifier, IScreenToolHost
     }
 
     /// <summary>Opens the screenshot editor on any image Wheel can read.</summary>
+    /// <summary>The picture viewer: one picture → its whole folder (Next / Back); several → those; a folder → its pictures.</summary>
+    private ViewerWindow? OpenViewer(System.Collections.Generic.IReadOnlyList<string> paths)
+    {
+        var (pictures, start) = Wheel.Core.Files.ImageFolder.For(paths);
+        if (pictures.Count == 0)
+        {
+            Notify("No pictures", "There are no pictures here to view.");
+            return null;
+        }
+        var viewer = new ViewerWindow(pictures, start, _platform, OpenEditorAsync);
+        _platform.BringToFront();
+        viewer.Show();
+        viewer.Activate();
+        Log.Trace($"Viewer opened: {pictures.Count} picture(s), starting at {pictures[start]}");
+        return viewer;
+    }
+
     private async Task OpenEditorAsync(string path)
     {
         try
@@ -639,6 +669,8 @@ internal sealed class App : Application, INotifier, IScreenToolHost
                 _ = OpenEditorAsync(paths[0]);
             else if (option.Id == "any.rename")
                 OpenRename(paths);
+            else if (option.Id == "img.view")
+                OpenViewer(paths);
             else
                 _ = _jobs.RunAsync(option, paths);
         };
@@ -834,11 +866,37 @@ internal sealed class App : Application, INotifier, IScreenToolHost
 
     // ---------- one-shot: files given on the command line ----------
 
+    /// <summary>"DeskWheel --view picture.jpg" (Open with › Desk Wheel): just the viewer; quits when it's closed.</summary>
+    private void StartViewer(string path)
+    {
+        var viewer = OpenViewer([path]);
+        if (viewer is null) { Quit(); return; }
+        // The editor can be opened from the viewer; quit once no window is left.
+        viewer.Closed += (_, _) => Avalonia.Threading.Dispatcher.UIThread.Post(QuitWhenNoWindows, Avalonia.Threading.DispatcherPriority.Background);
+    }
+
+    private void QuitWhenNoWindows()
+    {
+        if (ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime { Windows.Count: > 0 } desktop)
+        {
+            foreach (var w in desktop.Windows) w.Closed += (_, _) => Avalonia.Threading.Dispatcher.UIThread.Post(QuitWhenNoWindows, Avalonia.Threading.DispatcherPriority.Background);
+            return;
+        }
+        Quit();
+    }
+
     private void StartOneShot(string[] files)
     {
         var wheel = new WheelWindow(_platform, _caps, WheelMode.Convert, files, clickMode: true);
         wheel.OptionChosen += async (option, paths) =>
         {
+            if (option.Id == "img.view")
+            {
+                var viewer = OpenViewer(paths);
+                if (viewer is null) Quit();
+                else viewer.Closed += (_, _) => Avalonia.Threading.Dispatcher.UIThread.Post(QuitWhenNoWindows, Avalonia.Threading.DispatcherPriority.Background);
+                return;
+            }
             await _jobs.RunAsync(option, paths);
             await Task.Delay(TimeSpan.FromSeconds(5)); // let the result card be seen
             Quit();

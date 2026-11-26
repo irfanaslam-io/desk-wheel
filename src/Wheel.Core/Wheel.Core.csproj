@@ -8,6 +8,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- The JSON viewer page (self-contained: no internet, nothing loaded from elsewhere). -->
+    <EmbeddedResource Include="Json\JsonViewer.html" LogicalName="Wheel.Core.Json.JsonViewer.html" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- QR codes and barcodes: reading from the screen and making new ones (Apache-2.0, pure .NET). -->
     <PackageReference Include="ZXing.Net" Version="0.16.11" />
     <!-- PDF passwords and compression, in-process (MIT): nothing extra to install. -->

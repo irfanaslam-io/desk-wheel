@@ -131,6 +131,13 @@ internal static class SelfTest
         });
         Check("ZIP → TAR.GZ", () => zip is null ? "no ZIP" : Produced(ArchiveConverter.Run(Opt("arc.to-targz"), [zip]), "TAR.GZ"));
 
+        // ---- JSON ----
+        var json = Path.Combine(folder, "sample.json");
+        File.WriteAllText(json, "{\"name\":\"Desk Wheel\",\"tools\":[\"convert\",\"view\"],\"free\":true}");
+        Check("JSON format", () => Produced(Wheel.Core.Json.JsonTools.Format(json), "JSON"));
+        Check("JSON viewer page", () => Produced(Wheel.Core.Json.JsonTools.SaveHtml(json), "page"));
+        Check("JSON → CSV", () => Produced(Wheel.Core.Json.JsonTools.ToCsv(json), "CSV"));
+
         report.Add(failures == 0 ? "All checks passed." : $"{failures} check(s) failed.");
         Console.WriteLine(report[^1]);
         File.WriteAllLines(Path.Combine(folder, "self-test.txt"), report);

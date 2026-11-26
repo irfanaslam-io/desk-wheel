@@ -196,7 +196,8 @@ public static class FfmpegConverter
             case "vid.to-mov":
                 a.AddRange(h264); a.AddRange(["-c:a", "aac", "-b:a", "160k"]); break;
             case "vid.to-webm":
-                a.AddRange(["-c:v", "libvpx-vp9", "-crf", "32", "-b:v", "0", "-deadline", "good", "-cpu-used", "4", "-row-mt", "1", "-c:a", "libopus", "-b:a", "128k"]); break;
+                // crf 36: clearly smaller than most sources (crf 32 often came out nearly the size of an already compressed MP4).
+                a.AddRange(["-c:v", "libvpx-vp9", "-crf", "36", "-b:v", "0", "-deadline", "good", "-cpu-used", "4", "-row-mt", "1", "-c:a", "libopus", "-b:a", "96k"]); break;
             case "vid.to-mkv":
                 a.AddRange(["-map", "0", "-c", "copy"]); break;
             case "vid.to-gif":

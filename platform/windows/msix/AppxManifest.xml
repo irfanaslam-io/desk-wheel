@@ -11,7 +11,8 @@
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
   xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-  IgnorableNamespaces="uap desktop rescap">
+  xmlns:uap10="http://schemas.microsoft.com/appx/manifest/uap/windows10/10"
+  IgnorableNamespaces="uap desktop rescap uap10">
 
   <Identity Name="{NAME}" Publisher="{PUBLISHER}" Version="{VERSION}" ProcessorArchitecture="{ARCH}" />
 
@@ -42,6 +43,27 @@
         <desktop:Extension Category="windows.startupTask" Executable="DeskWheel.exe" EntryPoint="Windows.FullTrustApplication">
           <desktop:StartupTask TaskId="DeskWheelAtSignIn" Enabled="true" DisplayName="Desk Wheel" />
         </desktop:Extension>
+        <!-- Picture viewer: "Open with › Desk Wheel" (people choose it as their default viewer in Settings if they want). -->
+        <uap:Extension Category="windows.fileTypeAssociation">
+          <uap:FileTypeAssociation Name="pictures" uap10:Parameters="--view &quot;%1&quot;">
+            <uap:DisplayName>Picture</uap:DisplayName>
+            <uap:SupportedFileTypes>
+              <uap:FileType>.jpg</uap:FileType>
+              <uap:FileType>.jpeg</uap:FileType>
+              <uap:FileType>.png</uap:FileType>
+              <uap:FileType>.gif</uap:FileType>
+              <uap:FileType>.bmp</uap:FileType>
+              <uap:FileType>.webp</uap:FileType>
+              <uap:FileType>.heic</uap:FileType>
+              <uap:FileType>.heif</uap:FileType>
+              <uap:FileType>.avif</uap:FileType>
+              <uap:FileType>.tif</uap:FileType>
+              <uap:FileType>.tiff</uap:FileType>
+              <uap:FileType>.ico</uap:FileType>
+              <uap:FileType>.jfif</uap:FileType>
+            </uap:SupportedFileTypes>
+          </uap:FileTypeAssociation>
+        </uap:Extension>
       </Extensions>
     </Application>
   </Applications>

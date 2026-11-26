@@ -133,13 +133,56 @@ internal sealed partial class WindowsPlatform : IPlatform
     [DllImport("user32.dll")] private static extern IntPtr GetClipboardData(uint format);
     [DllImport("kernel32.dll")] private static extern UIntPtr GlobalSize(IntPtr mem);
 
+    // ---------- windows on screen (for window screenshots) ----------
+
+    private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+    [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool EnumWindows(EnumWindowsProc callback, IntPtr lParam);
+    [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool IsWindowVisible(IntPtr hWnd);
+    [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool IsIconic(IntPtr hWnd);
+    [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool GetWindowRect(IntPtr hWnd, out RECT rect);
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")] private static extern IntPtr GetWindowLongPtr(IntPtr hWnd, int index);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int GetClassName(IntPtr hWnd, System.Text.StringBuilder name, int max);
+    [DllImport("dwmapi.dll")] private static extern int DwmGetWindowAttribute(IntPtr hWnd, int attribute, out RECT value, int size);
+    [DllImport("dwmapi.dll", EntryPoint = "DwmGetWindowAttribute")] private static extern int DwmGetCloaked(IntPtr hWnd, int attribute, out int value, int size);
+
+    public bool OwnCaptureOverlay => true;
+
+    public IReadOnlyList<Avalonia.PixelRect> VisibleWindows()
+    {
+        const int GWL_EXSTYLE = -20, DWMWA_EXTENDED_FRAME_BOUNDS = 9, DWMWA_CLOAKED = 14;
+        const long WS_EX_TOOLWINDOW = 0x80, WS_EX_TRANSPARENT = 0x20;
+        var own = (uint)Environment.ProcessId;
+        var found = new List<Avalonia.PixelRect>();
+        var name = new System.Text.StringBuilder(64);
+        EnumWindows((hWnd, _) => // top-level windows, front to back
+        {
+            if (!IsWindowVisible(hWnd) || IsIconic(hWnd)) return true;
+            GetWindowThreadProcessId(hWnd, out var pid);
+            if (pid == own) return true;
+            var ex = GetWindowLongPtr(hWnd, GWL_EXSTYLE).ToInt64();
+            if ((ex & (WS_EX_TOOLWINDOW | WS_EX_TRANSPARENT)) != 0) return true;
+            if (DwmGetCloaked(hWnd, DWMWA_CLOAKED, out var cloaked, sizeof(int)) == 0 && cloaked != 0) return true; // other virtual desktops, suspended apps
+            name.Clear();
+            GetClassName(hWnd, name, name.Capacity);
+            if (name.ToString() is "Progman" or "WorkerW") return true; // the desktop itself: the overlay falls back to the whole screen
+            // The visible frame, without the invisible resize borders and shadow that GetWindowRect includes.
+            if (DwmGetWindowAttribute(hWnd, DWMWA_EXTENDED_FRAME_BOUNDS, out var r, Marshal.SizeOf<RECT>()) != 0 && !GetWindowRect(hWnd, out r))
+                return true;
+            if (r.Right - r.Left >= 24 && r.Bottom - r.Top >= 24)
+                found.Add(new Avalonia.PixelRect(r.Left, r.Top, r.Right - r.Left, r.Bottom - r.Top));
+            return found.Count < 400;
+        }, IntPtr.Zero);
+        return found;
+    }
+
     private const uint CF_DIB = 8;
     private const uint SRCCOPY = 0x00CC0020, CAPTUREBLT = 0x40000000;
     private static readonly uint PngFormat = RegisterClipboardFormat("PNG");
 
     /// <summary>
-    /// Area / window: Windows' own snipping overlay (ms-screenclip:), picked up from the clipboard when done.
-    /// Full screen: captured directly (GDI), the monitor under the pointer.
+    /// Full screen: captured directly (GDI), the monitor under the pointer. Area and window normally go through
+    /// Desk Wheel's own overlay (<see cref="OwnCaptureOverlay"/>); this path, Windows' snipping overlay
+    /// (ms-screenclip:) picked up from the clipboard, is only a fallback.
     /// </summary>
     public async Task<(bool Ok, string? Problem)> CaptureAsync(CaptureKind kind, string outputPng)
     {

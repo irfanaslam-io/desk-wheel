@@ -1179,6 +1179,69 @@ TestAsync("Usage statistics: only codes and numbers, never names or paths; nothi
 });
 
 Console.WriteLine($"Running {tests.Count} tests in {work}");
+// ---------------------------------------------------------------- JSON
+Test("JSON: kinds and wheel options", () =>
+{
+    Eq(FileKind.Json, FileClassifier.Classify("data.json"), "kind");
+    Eq(FileKind.Json, FileClassifier.Classify("settings.jsonc"), "jsonc");
+    var labels = OptionRegistry.GetOptions(WheelMode.Convert, ["/x/data.json"], new Capabilities(true, false, true, true, true, false, false, false, null, null)).Select(o => o.Label).ToList();
+    True(labels.Contains("View") && labels.Contains("Format") && labels.Contains("CSV"), string.Join(",", labels));
+});
+Test("JSON: format, minify keep order, numbers and Arabic; comments allowed", () =>
+{
+    var dir = Directory.CreateTempSubdirectory("dw-json").FullName;
+    var f = Path.Combine(dir, "data.json");
+    File.WriteAllText(f, "\uFEFF{ // settings\n \"z\": 1.50, \"a\": [1, 2,], \"name\": \"محمد\", \"html\": \"</script>\" }");
+    var formatted = Wheel.Core.Json.JsonTools.Format(f);
+    True(formatted.Success, formatted.Error ?? "");
+    Eq("data (formatted).json", Path.GetFileName(formatted.Outputs[0]), "name");
+    var text = File.ReadAllText(formatted.Outputs[0]);
+    True(text.IndexOf("\"z\"") < text.IndexOf("\"a\""), "key order kept");
+    True(text.Contains("1.50") && text.Contains("محمد") && text.Contains("\n  \"a\""), text);
+    var min = File.ReadAllText(Wheel.Core.Json.JsonTools.Minify(f).Outputs[0]);
+    Eq("{\"z\":1.50,\"a\":[1,2],\"name\":\"محمد\",\"html\":\"</script>\"}", min, "minified");
+    // The viewer page can't be broken out of by the data.
+    var page = Wheel.Core.Json.JsonTools.BuildPage(f);
+    True(!page.Contains("</script>\"") && page.Contains("\\u003c/script>"), "escaped");
+    True(page.Contains("data.json") && !page.Contains("{{"), "placeholders filled");
+});
+Test("JSON: mistakes are reported with line and column; the page still opens", () =>
+{
+    var dir = Directory.CreateTempSubdirectory("dw-json").FullName;
+    var f = Path.Combine(dir, "bad.json");
+    File.WriteAllText(f, "{\n  \"a\": 1\n  \"b\": 2\n}");
+    var r = Wheel.Core.Json.JsonTools.Format(f);
+    True(!r.Success && r.Error!.Contains("line 3"), r.Error ?? "");
+    True(Wheel.Core.Json.JsonTools.BuildPage(f).Contains("line 3"), "page shows the error");
+});
+Test("JSON: records to CSV (union of keys, nested as JSON, formulas defused)", () =>
+{
+    var dir = Directory.CreateTempSubdirectory("dw-json").FullName;
+    var f = Path.Combine(dir, "people.json");
+    File.WriteAllText(f, "{\"data\":[{\"name\":\"Ali, K\",\"age\":30},{\"name\":\"=cmd\",\"tags\":[\"a\",\"b\"]}]}");
+    var r = Wheel.Core.Json.JsonTools.ToCsv(f);
+    True(r.Success, r.Error ?? "");
+    var lines = File.ReadAllLines(r.Outputs[0]);
+    Eq("name,age,tags", lines[0].TrimStart('\uFEFF'), "header");
+    Eq("\"Ali, K\",30,", lines[1], "row 1");
+    Eq("'=cmd,,\"[\"\"a\"\",\"\"b\"\"]\"", lines[2], "row 2");
+});
+
+// ---------------------------------------------------------------- picture viewer
+Test("Viewer: a picture opens its folder in Explorer's order; folders and selections", () =>
+{
+    var dir = Directory.CreateTempSubdirectory("dw-view").FullName;
+    foreach (var n in new[] { "photo 10.jpg", "photo 2.png", "Photo 1.webp", "notes.txt", ".hidden.jpg", "photo 02.jpg" })
+        File.WriteAllText(Path.Combine(dir, n), "x");
+    var (pics, start) = Wheel.Core.Files.ImageFolder.For([Path.Combine(dir, "photo 2.png")]);
+    Eq("Photo 1.webp|photo 2.png|photo 02.jpg|photo 10.jpg", string.Join("|", pics.Select(Path.GetFileName)), "order");
+    Eq(1, start, "starts at the picture");
+    Eq(4, Wheel.Core.Files.ImageFolder.For([dir]).Pictures.Count, "folder");
+    var two = Wheel.Core.Files.ImageFolder.For([Path.Combine(dir, "photo 10.jpg"), Path.Combine(dir, "notes.txt"), Path.Combine(dir, "Photo 1.webp")]);
+    Eq(2, two.Pictures.Count, "only the chosen pictures");
+    True(OptionRegistry.GetOptions(WheelMode.Tools, [Path.Combine(dir, "photo 2.png")], new Capabilities(true, false, true, true, true, false, false, false, null, null)).Any(o => o.Id == "img.view"), "View on the Tools wheel");
+});
+
 var failed = 0;
 foreach (var (name, body) in tests)
 {

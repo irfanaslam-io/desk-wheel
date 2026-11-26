@@ -9,7 +9,9 @@ Everything Desk Wheel can do, and how. New here? Start with [Getting started](..
 - [Clipboard history](#clipboard-history)
 - [Screen tools](#screen-tools)
 - [Copying text from the screen (OCR)](#copying-text-from-the-screen-ocr)
+- [Viewing pictures](#viewing-pictures)
 - [Reading Markdown files](#reading-markdown-files)
+- [Reading JSON files](#reading-json-files)
 - [Editing screenshots](#editing-screenshots)
 - [More file tools](#more-file-tools)
 - [History](#history)
@@ -39,9 +41,9 @@ Easiest: **click the orange button**. The wheel opens on **Screenshot**: Area, W
 - Screenshots are saved to **Pictures → Desk Wheel Screenshots** and copied to the clipboard.
 - A card appears bottom-left with **Copy**, **Edit**, **Text**, **Pin** (keeps it floating on top), **Desk Wheel** (convert it) and **Show**. You can also drag the thumbnail into any app.
 - **Mac:** uses the system's own selection screen (as ⌘⇧4: Space switches to window mode, Esc cancels). Needs the **Screen Recording** permission once.
-- **Windows:** area screenshots open Desk Wheel's own **mark-up overlay** (below); window uses Windows' snipping overlay; full screen is captured directly.
+- **Windows:** area and window screenshots use Desk Wheel's own **mark-up overlay** (below), never the Snipping Tool; full screen is captured directly. For **Window**, the window under the pointer is outlined: click it to take it (or drag over any area instead). With *Mark up area screenshots right away* turned off in Settings, the picture is saved as soon as you pick the area or window.
 
-### Mark up while you capture (area screenshots)
+### Mark up while you capture (area and window screenshots)
 
 Drag over the area, and a toolbar appears right beside it, like Flameshot: **Pencil (P)**, **Line (L)**, **Arrow (A)**, **Box (R)**, **Circle (C)**, **Highlight (H)**, **Text (T)**, **numbered Steps (N)**, **Blur (B)**, **Redact (X)** and **Move (M)**. The colour dot (or keys **1–7**, or right-click) changes colour, the **mouse wheel** sets the line thickness, and **Ctrl+Z / Ctrl+Y** undo and redo.
 
@@ -83,6 +85,17 @@ Engines:
 - **Windows:** the OCR built into Windows 10 and 11. For Arabic, add Arabic in Settings → Time & language → Language.
 - **Either:** if neither is available, Tesseract is used when installed (`brew install tesseract tesseract-lang`).
 
+## Viewing pictures
+
+Desk Wheel has a picture viewer that steps through a whole folder:
+
+- **From the wheel:** select a picture, then **Tools → View**. Select a folder, or several pictures, to view just those.
+- **From File Explorer (Windows):** right-click a picture › **Open with › Desk Wheel**. To use it every time, choose Desk Wheel for pictures in *Settings › Apps › Default apps*.
+- **Next and Back:** the **→ / ←** keys (also Space, Page Up / Page Down, the mouse's back and forward buttons) or the round buttons at the sides. **Home / End** jump to the first or last picture. It goes round from the last picture to the first.
+- **Zoom:** the mouse wheel zooms where the pointer is; drag to move around; **double-click**, **0** (fit) and **1** (actual size) switch between the whole picture and 100 %. **+ / −** zoom too.
+- **F11** (or **F**) for full screen, **Esc** to leave it or close. **E** opens the picture in the editor, **Ctrl+C** copies it, and the folder button shows it in File Explorer or Finder.
+- Pictures are shown in the same order as File Explorer (photo 2 before photo 10), and the next and previous ones are loaded in advance, so stepping through is instant. HEIC, AVIF and TIFF open too.
+
 ## Reading Markdown files
 
 Select a `.md` file (a README, notes, docs) and click the button, then the centre once: **Convert → Read** opens it as a formatted page in your browser, the way GitHub shows a README.
@@ -93,6 +106,16 @@ Select a `.md` file (a README, notes, docs) and click the button, then the centr
 - Arabic paragraphs read right to left.
 - Images next to the file show up. **Print / PDF** saves it as a PDF.
 - Works offline. Scripts inside the file are removed before the page is shown.
+
+## Reading JSON files
+
+Select a `.json` file (also `.jsonc`, `.geojson` and `.har`) and open the **Convert** wheel:
+
+- **View** opens it as a readable page in your browser: coloured keys and values, folding (click ▸ or the count), **Expand all / Collapse**, and a **Text** view of the formatted JSON. **Search** ( **/** ) finds keys and values, opens the parts that contain them and steps through them with Enter. Hover a line to see its path (`$.users[0].email`); click a key to copy the path, double-click a value to copy it. Light or dark to match your system, and it works offline.
+- **Format** saves an indented copy (`name (formatted).json`) and **Minify** a one-line copy, both keeping the key order and numbers exactly as they were.
+- **CSV** turns a list of records into a spreadsheet: one row per item, one column per key. Nested values go into the cell as JSON.
+- **HTML** saves the viewer page beside the file, to keep or share.
+- Comments and trailing commas (as in VS Code settings files) are accepted. If the file has a mistake, the page shows the line and column.
 
 **Convert → HTML** saves the formatted page beside the file, to share or keep. **Read** is also on the Tools wheel.
 

@@ -39,6 +39,7 @@ public static class FileClassifier
         [".csv"] = FileKind.Spreadsheet,
         [".pptx"] = FileKind.Presentation, [".ppt"] = FileKind.Presentation, [".odp"] = FileKind.Presentation,
 
+        [".json"] = FileKind.Json, [".jsonc"] = FileKind.Json, [".geojson"] = FileKind.Json, [".har"] = FileKind.Json,
         [".md"] = FileKind.Markdown, [".markdown"] = FileKind.Markdown, [".mdown"] = FileKind.Markdown, [".mkd"] = FileKind.Markdown,
     };
 

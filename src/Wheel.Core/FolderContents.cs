@@ -51,6 +51,7 @@ public static class FolderContents
             FileKind.Spreadsheet => "spreadsheet",
             FileKind.Presentation => "presentation",
             FileKind.Markdown => "Markdown file",
+            FileKind.Json => "JSON file",
             _ => "file",
         };
         return $"{n} {noun}{(n == 1 ? "" : "s")}";

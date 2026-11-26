@@ -56,6 +56,11 @@ internal sealed class JobRunner
                 Read(paths);
                 return;
             }
+            if (option.Id is "json.view" or "json.view-tools")
+            {
+                ViewJson(paths);
+                return;
+            }
 
             Wheel.Core.Files.ResizeSpec? size = null;
             string? password = null;
@@ -188,6 +193,27 @@ internal sealed class JobRunner
             _notifier.Notify("Opened the first 5", $"{paths.Count} Markdown files selected; select fewer to read the rest.");
     }
 
+    /// <summary>View: each JSON file as a readable page in the browser (self-contained, nothing loaded from the internet).</summary>
+    private void ViewJson(IReadOnlyList<string> paths)
+    {
+        var folder = Path.Combine(Path.GetTempPath(), "DeskWheel Reader");
+        foreach (var path in paths.Take(MaxPagesOpened))
+        {
+            try
+            {
+                var page = Wheel.Core.Json.JsonTools.WriteViewingCopy(path, folder);
+                _platform.OpenInBrowser(page);
+                _notifier.Notify("Opened in your browser", Path.GetFileName(path), reveal: page);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+            {
+                _notifier.Notify("Couldn't show it", $"{Path.GetFileName(path)}: {ex.Message}", error: true);
+            }
+        }
+        if (paths.Count > MaxPagesOpened)
+            _notifier.Notify("Opened the first 5", $"{paths.Count} JSON files selected; select fewer to view the rest.");
+    }
+
     /// <summary>
     /// Text tool: one image → its text goes on the clipboard; several → a .txt beside each.
     /// </summary>
@@ -269,6 +295,14 @@ internal sealed class JobRunner
         EngineKind.Markdown => Task.Run(() => MarkdownAssets.Shipped() is { } assets
             ? MarkdownPage.SaveHtml(paths[0], assets)
             : JobResult.Fail("The Markdown page files are missing from Desk Wheel's folder. Rebuild Desk Wheel.")),
+        EngineKind.Json => Task.Run(() => option.Id switch
+        {
+            "json.format" => Wheel.Core.Json.JsonTools.Format(paths[0]),
+            "json.minify" => Wheel.Core.Json.JsonTools.Minify(paths[0]),
+            "json.to-csv" => Wheel.Core.Json.JsonTools.ToCsv(paths[0]),
+            "json.to-html" => Wheel.Core.Json.JsonTools.SaveHtml(paths[0]),
+            _ => JobResult.Fail($"No engine for {option.Id}"),
+        }),
         _ => Task.FromResult(JobResult.Fail($"No engine for {option.Id}")),
     };
 

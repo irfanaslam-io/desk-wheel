@@ -56,6 +56,18 @@ internal interface IPlatform : IDisposable
     /// </summary>
     Task<(bool Ok, string? Problem)> CaptureAsync(CaptureKind kind, string outputPng);
 
+    /// <summary>
+    /// True when area and window screenshots use Desk Wheel's own overlay (<see cref="SnipWindow"/>) rather than
+    /// the system's capture screen. Windows: yes (no Snipping Tool). macOS: no (its own capture screen is used).
+    /// </summary>
+    bool OwnCaptureOverlay => false;
+
+    /// <summary>
+    /// The visible app windows, front to back, in screen pixels (for picking a window to capture).
+    /// Desk Wheel's own windows are left out.
+    /// </summary>
+    System.Collections.Generic.IReadOnlyList<Avalonia.PixelRect> VisibleWindows() => [];
+
     /// <summary>macOS: the display under the pointer, numbered as ffmpeg's "Capture screen N" (0 = main). Windows: 0.</summary>
     int ScreenNumberUnderPointer();
 

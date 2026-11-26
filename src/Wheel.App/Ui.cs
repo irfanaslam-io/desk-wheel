@@ -384,7 +384,7 @@ internal enum IconKind
 {
     Arrow, Box, Highlight, Text, Steps, Blur, Redact, Crop, Sparkle, Undo, Redo, Copy, Save, Check, Close, Search,
     Pin, Star, Folder, Edit, Wheel, Settings, Trash, Clipboard, Info, Warning, Image, File, Refresh, Plus, Eye,
-    Line, Ellipse, Move,
+    Line, Ellipse, Move, Back, Forward, Expand, Rotate, ZoomIn, ZoomOut,
 }
 
 /// <summary>Wheel's own simple line icons, on a 24×24 grid.</summary>
@@ -426,6 +426,12 @@ internal static class Icons
         IconKind.Line => ("M5 19 L19 5", false),
         IconKind.Ellipse => ("M12 5 C17 5 21 8.1 21 12 C21 15.9 17 19 12 19 C7 19 3 15.9 3 12 C3 8.1 7 5 12 5 Z", false),
         IconKind.Move => ("M12 3 L12 21 M3 12 L21 12 M9 6 L12 3 L15 6 M9 18 L12 21 L15 18 M6 9 L3 12 L6 15 M18 9 L21 12 L18 15", false),
+        IconKind.Back => ("M15 5 L8 12 L15 19", false),
+        IconKind.Forward => ("M9 5 L16 12 L9 19", false),
+        IconKind.Expand => ("M4 9 L4 4 L9 4 M15 4 L20 4 L20 9 M20 15 L20 20 L15 20 M9 20 L4 20 L4 15", false),
+        IconKind.Rotate => ("M20 12 A8 8 0 1 1 17.5 6.2 M20 3.5 L20 8.5 L15 8.5", false),
+        IconKind.ZoomIn => ("M10.5 4 A6.5 6.5 0 1 1 10.49 4 Z M15.5 15.5 L20 20 M10.5 7.5 L10.5 13.5 M7.5 10.5 L13.5 10.5", false),
+        IconKind.ZoomOut => ("M10.5 4 A6.5 6.5 0 1 1 10.49 4 Z M15.5 15.5 L20 20 M7.5 10.5 L13.5 10.5", false),
         _ => ("M4 4 L20 20", false),
     };
 }

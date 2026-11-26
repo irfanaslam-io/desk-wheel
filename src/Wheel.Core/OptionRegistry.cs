@@ -36,6 +36,7 @@ public static class OptionRegistry
             T("img.resize", "Size…", "Resize to a size you type: 1920x1080, 1080, x720 or 25%", EngineKind.Image, many: true),
             T("img.rotate", "Rotate", "Rotate 90° clockwise", EngineKind.Image),
             T("img.strip", "No EXIF", "Remove metadata (GPS, camera, dates)", EngineKind.Image),
+            T("img.view", "View", "Picture viewer: Next and Back through the folder, zoom, full screen", EngineKind.Window, many: true),
             T("img.edit", "Edit", "Mark up: arrows, text, blur, redact, crop", EngineKind.Image),
             T("img.ocr", "Text", "Copy the text in the image (English and Arabic)", EngineKind.Ocr),
             T("img.cutout", "Cut out", "Remove the background, keep the subject (PNG)", EngineKind.Vision, ".png"),
@@ -113,6 +114,15 @@ public static class OptionRegistry
             C("md.read", "Read", "Open as a formatted page, like GitHub", EngineKind.Markdown),
             C("md.to-html", "HTML", "Save as a formatted web page", EngineKind.Markdown, ".html"),
             T("md.read-tools", "Read", "Open as a formatted page, like GitHub", EngineKind.Markdown),
+        ],
+        [FileKind.Json] =
+        [
+            C("json.view", "View", "Open as a readable page: fold, search, copy paths", EngineKind.Json),
+            C("json.format", "Format", "Indented and easy to read, saved as a copy", EngineKind.Json),
+            C("json.minify", "Minify", "On one line, as small as possible", EngineKind.Json),
+            C("json.to-csv", "CSV", "A list of records as a spreadsheet (opens in Excel)", EngineKind.Json, ".csv"),
+            C("json.to-html", "HTML", "Save the readable page to keep or share", EngineKind.Json, ".html"),
+            T("json.view-tools", "View", "Open as a readable page: fold, search, copy paths", EngineKind.Json),
         ],
         [FileKind.Subtitle] =
         [

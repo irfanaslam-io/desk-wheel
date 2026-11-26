@@ -26,6 +26,8 @@ public enum FileKind
     /// <summary>PPTX, PPT, ODP.</summary>
     Presentation,
     Markdown,
+    /// <summary>JSON, JSONC, GeoJSON, HAR.</summary>
+    Json,
     Folder,
     Other,
 }
@@ -51,6 +53,8 @@ public enum EngineKind
     Ocr,
     /// <summary>Markdown shown as a formatted page (engines/markdown/).</summary>
     Markdown,
+    /// <summary>JSON: viewer page, format, minify, CSV (in-process, System.Text.Json).</summary>
+    Json,
     /// <summary>Apple Vision through Wheel's Mac helper (background removal). Lives in Wheel.App.</summary>
     Vision,
     /// <summary>PDF passwords and compression, in-process (PDFsharp).</summary>

@@ -89,9 +89,14 @@ internal sealed class SnipWindow : Window
     private Polyline? _inkLine;
     private TextBox? _typing;
     private (double X, double Y) _typingAt;
+    private readonly List<Rect> _windows = new();   // windows to pick, front to back, in view units
+    private Rect? _hover;                           // the window under the pointer, before anything is selected
+    private readonly bool _finishOnSelect;          // save straight away (mark-up turned off in Settings)
 
-    private SnipWindow(SKBitmap screen, Bitmap picture, Avalonia.PixelRect screenBounds, double scaling)
+    private SnipWindow(SKBitmap screen, Bitmap picture, Avalonia.PixelRect screenBounds, double scaling,
+                       IReadOnlyList<Avalonia.PixelRect>? windows, bool finishOnSelect)
     {
+        _finishOnSelect = finishOnSelect;
         _screen = screen;
         _picture = picture;
         SystemDecorations = SystemDecorations.None;
@@ -103,6 +108,17 @@ internal sealed class SnipWindow : Window
         Width = screenBounds.Width / scaling;
         Height = screenBounds.Height / scaling;
         _px = screen.Width / Width;
+        if (windows is not null)
+        {
+            // Screen pixels (whole desktop) → this screen's view units, cut to the screen.
+            var whole = new Rect(0, 0, Width, Height);
+            foreach (var w in windows)
+            {
+                var r = new Rect((w.X - screenBounds.X) / _px, (w.Y - screenBounds.Y) / _px, w.Width / _px, w.Height / _px).Intersect(whole);
+                if (r.Width >= 8 && r.Height >= 8) _windows.Add(r);
+            }
+            _windows.Add(whole); // over the desktop: the whole screen
+        }
         _lineWidth = Math.Max(3, Math.Round(2.5 * _px));
         Cursor = new Cursor(StandardCursorType.Cross);
 
@@ -123,9 +139,9 @@ internal sealed class SnipWindow : Window
         _hint = new Border
         {
             Background = BarBrush, CornerRadius = new CornerRadius(8), Padding = new Thickness(12, 6), IsHitTestVisible = false,
-            Child = new TextBlock { Text = "Drag over the area · Esc to cancel", Foreground = Brushes.White, FontSize = 13 },
+            Child = new TextBlock { Text = windows is null ? "Drag over the area · Esc to cancel" : "Click a window, or drag over an area · Esc to cancel", Foreground = Brushes.White, FontSize = 13 },
         };
-        Canvas.SetLeft(_hint, Width / 2 - 130);
+        Canvas.SetLeft(_hint, Width / 2 - (windows is null ? 130 : 185));
         Canvas.SetTop(_hint, 40);
         _canvas.Children.Add(_hint);
 
@@ -184,13 +200,16 @@ internal sealed class SnipWindow : Window
     }
 
     /// <summary>Shows the snip over the screen in <paramref name="screenshot"/>; the finished image, or null when cancelled.</summary>
-    public static async Task<SnipResult?> ShowAsync(string screenshot, Avalonia.PixelRect screenBounds, double scaling)
+    /// <param name="windows">Windows that can be picked with a click (screen pixels, front to back); null for area only.</param>
+    /// <param name="finishOnSelect">Save as soon as an area or window is chosen, without the mark-up toolbar.</param>
+    public static async Task<SnipResult?> ShowAsync(string screenshot, Avalonia.PixelRect screenBounds, double scaling,
+                                                    IReadOnlyList<Avalonia.PixelRect>? windows = null, bool finishOnSelect = false)
     {
         var screen = SKBitmap.Decode(screenshot) ?? throw new IOException("Couldn't read the screen picture.");
         Bitmap picture;
         using (var stream = File.OpenRead(screenshot))
             picture = new Bitmap(stream);
-        var window = new SnipWindow(screen, picture, screenBounds, scaling);
+        var window = new SnipWindow(screen, picture, screenBounds, scaling, windows, finishOnSelect);
         window.Show();
         window.Activate();
         return await window._result.Task;
@@ -287,10 +306,26 @@ internal sealed class SnipWindow : Window
     private void Select(Rect r)
     {
         _selected = true;
+        _hover = null;
         _hint.IsVisible = false;
-        _bar.IsVisible = true;
+        _bar.IsVisible = !_finishOnSelect;
         ShowSelection(r);
         Redraw();
+        if (_finishOnSelect) Finish(SnipAction.Done);
+    }
+
+    /// <summary>Before anything is selected: outlines the window under the pointer (click to take it).</summary>
+    private void HoverWindow(Point p)
+    {
+        var hit = _windows.Cast<Rect?>().FirstOrDefault(r => r!.Value.Contains(p));
+        if (hit == _hover) return;
+        _hover = hit;
+        if (hit is { } r) ShowSelection(r);
+        else
+        {
+            _border.IsVisible = _size.IsVisible = false;
+            _dim.Data = new RectangleGeometry(new Rect(0, 0, Width, Height));
+        }
     }
 
     private void PlaceBar()
@@ -419,6 +454,7 @@ internal sealed class SnipWindow : Window
         }
         if (_dragFrom is not { } from)
         {
+            if (!_selected && _windows.Count > 0) HoverWindow(p);
             UpdateCursor(p);
             return;
         }
@@ -429,7 +465,11 @@ internal sealed class SnipWindow : Window
         }
         if (!_selected)
         {
-            ShowSelection(new Rect(from, p).Normalize());
+            var drag = new Rect(from, p).Normalize();
+            // Window picking: a small wobble during a click still means "this window", not a tiny area.
+            if (_hover is not null && drag.Width * _px < 8 && drag.Height * _px < 8) return;
+            _hover = null;
+            ShowSelection(drag);
             return;
         }
 
@@ -505,6 +545,12 @@ internal sealed class SnipWindow : Window
             var r = new Rect(from, p).Normalize();
             if (r.Width * _px < 8 || r.Height * _px < 8)
             {
+                // A click on a window takes that window.
+                if (_windows.Count > 0 && _windows.FirstOrDefault(w => w.Contains(p)) is { Width: > 0 } window)
+                {
+                    Select(window);
+                    return;
+                }
                 // A click, not a drag: start over.
                 _border.IsVisible = _size.IsVisible = false;
                 _dim.Data = new RectangleGeometry(new Rect(0, 0, Width, Height));
