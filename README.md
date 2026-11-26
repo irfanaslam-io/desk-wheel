@@ -132,7 +132,7 @@ Bug reports, ideas and pull requests are welcome. Please read [CONTRIBUTING.md](
 
 ## Licence
 
-Desk Wheel is **free for individuals and small businesses**, under your choice of the [PolyForm Small Business or PolyForm Noncommercial License 1.0.0](LICENSE.md):
+Desk Wheel is **free for individuals and small businesses**, under your choice of the [PolyForm Small Business](LICENSES/PolyForm-Small-Business-1.0.0.md) or [PolyForm Noncommercial](LICENSES/PolyForm-Noncommercial-1.0.0.md) License 1.0.0 (summary in [LICENSE.md](LICENSE.md)):
 
 - **Free:** personal use; freelancers and companies with **fewer than 100 people and under US$1 million** revenue a year; and charities, schools, universities, public research and health organisations and government institutions of any size. You may read, change and share the code too.
 - **Larger companies** need a commercial licence: see [COMMERCIAL.md](COMMERCIAL.md) or write to hello@irfanaslam.io.

@@ -57,6 +57,9 @@ internal static class SelfTest
         var engines = Path.Combine(AppContext.BaseDirectory, "engines");
         Check("ffmpeg is shipped", () => File.Exists(Path.Combine(engines, exe)) ? null : $"{exe} missing from {engines}");
         Check("PDFium is shipped", () => File.Exists(Path.Combine(engines, pdfium)) ? null : $"{pdfium} missing from {engines}");
+        Check("licence files are shipped", () =>
+            new[] { "LICENSE.md", "THIRD-PARTY-NOTICES.md", Path.Combine("LICENSES", "PolyForm-Small-Business-1.0.0.md"), Path.Combine("LICENSES", "PolyForm-Noncommercial-1.0.0.md") }
+                .FirstOrDefault(f => !File.Exists(Path.Combine(AppContext.BaseDirectory, f))) is { } missing ? $"{missing} missing" : null);
         Check("Markdown reader files are shipped", () => Wheel.Core.Markdown.MarkdownAssets.FindFolder() is null ? "engines/markdown missing" : null);
         Check("ffmpeg runs", () => FfmpegConverter.Locate() is { } f && f.StartsWith(engines, StringComparison.OrdinalIgnoreCase) && FfmpegConverter.Encoders(f).Count > 0 ? null : $"using {FfmpegConverter.Locate() ?? "none"}");
         Check("PDFium loads", () => PdfConverter.IsAvailable() ? null : "couldn't load it");
