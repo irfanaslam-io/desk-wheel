@@ -126,6 +126,15 @@ internal interface IPlatform : IDisposable
     void Reveal(string path);
     void OpenTerminal(string folder);
 
+    /// <summary>
+    /// Moves files and folders to the Trash (Mac) or Recycle Bin (Windows), where they can be put back.
+    /// Returns the paths that are gone, and why the rest weren't moved.
+    /// </summary>
+    Task<(System.Collections.Generic.IReadOnlyList<string> Moved, string? Problem)> MoveToTrashAsync(System.Collections.Generic.IReadOnlyList<string> paths);
+
+    /// <summary>"Trash" on a Mac, "Recycle Bin" on Windows.</summary>
+    string TrashName => OperatingSystem.IsMacOS() ? "Trash" : "Recycle Bin";
+
     bool StartAtLogin { get; set; }
 
     static IPlatform Create() =>

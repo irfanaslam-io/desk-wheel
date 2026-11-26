@@ -429,6 +429,38 @@ internal sealed partial class MacPlatform : IPlatform
 
     public void Reveal(string path) => Open("-R", path);
 
+    public async Task<(IReadOnlyList<string> Moved, string? Problem)> MoveToTrashAsync(IReadOnlyList<string> paths)
+    {
+        // Finder's own delete: items can be put back from the Trash, and disks other than the startup disk work.
+        static string Quote(string s) => "\"" + s.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"";
+        var items = string.Join(", ", paths.Select(p => $"(POSIX file {Quote(p)} as alias)"));
+        var script = $"tell application \"Finder\" to delete {{{items}}}";
+        var r = await ProcessRunner.RunAsync("/usr/bin/osascript", ["-e", script]);
+        string? problem = null;
+        if (r.ExitCode != 0)
+        {
+            Log.Trace($"  Finder delete failed: {r.ErrorTail.Trim()}");
+            // Not allowed to ask Finder (or Finder is busy): move into the Trash folder ourselves (no "Put Back").
+            var trash = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".Trash");
+            foreach (var path in paths.Where(p => File.Exists(p) || Directory.Exists(p)))
+            {
+                try
+                {
+                    var target = OutputPaths.Unique(Path.Combine(trash, Path.GetFileName(Path.TrimEndingDirectorySeparator(path))));
+                    if (Directory.Exists(path)) Directory.Move(path, target); else File.Move(path, target);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    problem = ex.Message;
+                }
+            }
+        }
+        var moved = paths.Where(p => !File.Exists(p) && !Directory.Exists(p)).ToList();
+        if (moved.Count < paths.Count && problem is null)
+            problem = r.ErrorTail.Trim() is { Length: > 0 } why ? why : "Some items couldn't be moved to the Trash.";
+        return (moved, moved.Count == paths.Count ? null : problem);
+    }
+
     public void OpenTerminal(string folder) => Open("-a", "Terminal", folder);
 
     public void OpenFolder(string folder) => Open(folder);

@@ -4,6 +4,7 @@ using Wheel.Core;
 using Wheel.Core.Converters;
 using Wheel.Core.Ocr;
 using Wheel.Core.Screen;
+using Wheel.Core.Disk;
 
 // Minimal test runner: each test is a named lambda; failures are collected and reported.
 var tests = new List<(string Name, Func<Task> Body)>();
@@ -60,7 +61,7 @@ Test("image + video has no common conversions but still gets ZIP tool and action
 {
     Eq(0, OptionRegistry.GetOptions(WheelMode.Convert, ["a.png", "b.mp4"], caps).Count, "convert count");
     True(Ids(OptionRegistry.GetOptions(WheelMode.Tools, ["a.png", "b.mp4"], caps)).Contains("any.zip"), "zip tool missing");
-    Eq(7, OptionRegistry.GetOptions(WheelMode.Actions, ["a.png", "b.mp4"], caps).Count, "action count (Checksum included)");
+    Eq(8, OptionRegistry.GetOptions(WheelMode.Actions, ["a.png", "b.mp4"], caps).Count, "action count (Checksum and Sizes included)");
     True(Ids(OptionRegistry.GetOptions(WheelMode.Actions, ["a.png"], caps)).Contains("act.copy-image"), "one image: copy picture");
     True(!Ids(OptionRegistry.GetOptions(WheelMode.Actions, ["a.pdf"], caps)).Contains("act.copy-image"), "a PDF: no copy picture");
 });
@@ -124,7 +125,7 @@ Test("Text options show only when text recognition is available", () =>
     var ocr = caps with { HasOcr = true };
     True(!Ids(OptionRegistry.GetOptions(WheelMode.Capture, Array.Empty<string>(), caps)).Contains("cap.text"), "cap.text without OCR");
     True(Ids(OptionRegistry.GetOptions(WheelMode.Capture, Array.Empty<string>(), ocr)).Contains("cap.text"), "cap.text missing");
-    Eq(17, OptionRegistry.GetOptions(WheelMode.Capture, Array.Empty<string>(), ocr).Count, "capture count");
+    Eq(18, OptionRegistry.GetOptions(WheelMode.Capture, Array.Empty<string>(), ocr).Count, "capture count");
     Eq("cap.area,cap.window,cap.full,cap.scroll,cap.text,cap.clipboard,cap.record,nav.more", string.Join(",", Ids(OptionRegistry.Page(OptionRegistry.GetOptions(WheelMode.Capture, Array.Empty<string>(), ocr), 0, WheelMode.Capture))), "first page of the Screenshot wheel");
     var tools = Ids(OptionRegistry.GetOptions(WheelMode.Tools, ["a.png"], ocr));
     True(tools.Contains("img.ocr") && tools.Contains("any.zip"), "image Text tool or ZIP missing");
@@ -1788,6 +1789,87 @@ TestAsync("screen recording → GIF recipe makes a looping GIF no wider than 960
     await ProcessRunner.RunAsync(ffmpeg, ["-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi", "-i", "testsrc=duration=1:size=400x300:rate=30", "-pix_fmt", "yuv420p", small]);
     await ProcessRunner.RunAsync(ffmpeg, RecordingPlan.GifArgs(small, Path.Combine(dir, "small.gif")));
     True((await ProcessRunner.RunAsync(ffmpeg, ["-hide_banner", "-i", Path.Combine(dir, "small.gif")])).Error.Contains("400x300"), "small recordings keep their size");
+});
+
+// ---------------------------------------------------------------- disk space
+
+TestAsync("disk scan: sizes add up, biggest first, links not followed, removing updates the totals", async () =>
+{
+    var dir = Dir("disk");
+    void Make(string rel, int bytes)
+    {
+        var p = Path.Combine(dir, rel);
+        Directory.CreateDirectory(Path.GetDirectoryName(p)!);
+        File.WriteAllBytes(p, new byte[bytes]);
+    }
+    Make("Movies/a.mp4", 50_000);
+    Make("Movies/b.mp4", 30_000);
+    Make("Movies/Old/c.mov", 20_000);
+    Make("Docs/note.txt", 1_000);
+    Make("small.bin", 10);
+    Directory.CreateDirectory(Path.Combine(dir, "Empty"));
+    if (!OperatingSystem.IsWindows())
+        Directory.CreateSymbolicLink(Path.Combine(dir, "loop"), dir); // would loop for ever if followed
+
+    var progress = new List<ScanProgress>();
+    var root = await Wheel.Core.Disk.DiskScanner.ScanAsync(dir, new Progress<ScanProgress>(progress.Add));
+    Eq(101_010L, root.Size, "total");
+    Eq(5L, root.FileCount, "files");
+    Eq("Movies,Docs,small.bin,Empty", string.Join(",", root.Children.Select(c => c.Name)), "biggest first, no link");
+    var movies = root.Children[0];
+    Eq(100_000L, movies.Size, "folder size");
+    Eq(Path.Combine(dir, "Movies", "Old", "c.mov"), movies.Children.First(c => c.Name == "Old").Children[0].FullPath, "full path");
+    Eq("MOV file", movies.Children.First(c => c.Name == "Old").Children[0].Kind, "kind");
+
+    var b = movies.Children.First(c => c.Name == "b.mp4");
+    b.Remove();
+    Eq(70_000L, movies.Size, "folder after removing");
+    Eq(71_010L, root.Size, "total after removing");
+    Eq(4L, root.FileCount, "files after removing");
+    True(movies.Children[^1].IsInside(root) && !b.IsInside(root), "inside");
+
+    await Task.Delay(50);
+    Eq("587 GB", Wheel.Core.Disk.DiskScanner.FormatSize(587_130_000_000), "GB");
+    Eq("6.3 MB", Wheel.Core.Disk.DiskScanner.FormatSize(6_300_000), "MB");
+    Eq("12.5 KB", Wheel.Core.Disk.DiskScanner.FormatSize(12_500), "KB");
+    Eq("512 bytes", Wheel.Core.Disk.DiskScanner.FormatSize(512), "bytes");
+    True(Wheel.Core.Disk.DiskScanner.DriveSpace(dir) is null, "a folder isn't a drive");
+    var top = Path.GetPathRoot(Path.GetFullPath(dir))!;
+    True(Wheel.Core.Disk.DiskScanner.DriveSpace(top) is { Total: > 0 }, "the drive's top has its space: " + top);
+});
+
+TestAsync("disk chart: wedges fill the turn, small items grouped, free space in grey, hit test", async () =>
+{
+    var dir = Dir("sunburst");
+    Directory.CreateDirectory(Path.Combine(dir, "big", "inner"));
+    File.WriteAllBytes(Path.Combine(dir, "big", "inner", "x.bin"), new byte[60_000]);
+    File.WriteAllBytes(Path.Combine(dir, "big", "y.bin"), new byte[20_000]);
+    File.WriteAllBytes(Path.Combine(dir, "mid.bin"), new byte[19_000]);
+    for (var i = 0; i < 10; i++) File.WriteAllBytes(Path.Combine(dir, $"tiny{i}.bin"), new byte[100]);
+    var root = await Wheel.Core.Disk.DiskScanner.ScanAsync(dir);
+
+    var arcs = SunburstLayout.Layout(root, minSweep: 0.005);
+    var ring1 = arcs.Where(a => a.Ring == 1).ToList();
+    Eq(1.0, Math.Round(ring1.Sum(a => a.Sweep), 6), "ring 1 is a full turn");
+    var group = ring1.Single(a => a.IsGroup);
+    Eq(10, group.GroupCount, "ten tiny files in one wedge");
+    Eq(1000L, group.Size, "their size");
+    Eq("big", ring1[0].Node!.Name, "biggest first, from 12 o'clock");
+    Eq(0.0, ring1[0].Start, "starts at the top");
+    var inner = arcs.Single(a => a.Node?.Name == "inner");
+    Eq(2, inner.Ring, "inner is on ring 2");
+    Eq(ring1[0].Hue, inner.Hue, "children keep their branch's colour");
+    Eq(3, arcs.Single(a => a.Node?.Name == "x.bin").Ring, "ring 3");
+    True(Math.Abs(arcs.Single(a => a.Node?.Name == "x.bin").Sweep - 0.6) < 0.001, "x.bin is 60% of the turn");
+    Eq(1, SunburstLayout.Layout(root, rings: 1).Max(a => a.Ring), "ring limit");
+
+    var withFree = SunburstLayout.Layout(root, freeSpace: root.Size);
+    var free = withFree.Single(a => a.IsFreeSpace);
+    True(Math.Abs(free.Sweep - 0.5) < 1e-9 && Math.Abs(free.Start - 0.5) < 1e-9, "free space is the other half");
+    Eq("big", SunburstLayout.HitTest(arcs, 1, 0.1)!.Node!.Name, "hit big");
+    Eq("x.bin", SunburstLayout.HitTest(arcs, 3, 0.3)!.Node!.Name, "hit x.bin");
+    True(SunburstLayout.HitTest(arcs, 3, 0.95) is null, "nothing there");
+    True(SunburstLayout.HitTest(withFree, 1, 0.75)!.IsFreeSpace, "hit free space");
 });
 
 var failed = 0;

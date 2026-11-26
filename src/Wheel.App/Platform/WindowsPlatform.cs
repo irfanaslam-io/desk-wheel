@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
@@ -535,6 +536,43 @@ internal sealed partial class WindowsPlatform : IPlatform
     }
 
     // explorer.exe needs exactly: /select,"C:\path\file"
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct ShFileOp
+    {
+        public IntPtr Window;
+        public uint Function;
+        public string From;
+        public string? To;
+        public ushort Flags;
+        [MarshalAs(UnmanagedType.Bool)] public bool Aborted;
+        public IntPtr NameMappings;
+        public string? ProgressTitle;
+    }
+
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode, EntryPoint = "SHFileOperationW")]
+    private static extern int SHFileOperation(ref ShFileOp op);
+
+    public Task<(IReadOnlyList<string> Moved, string? Problem)> MoveToTrashAsync(IReadOnlyList<string> paths) => Task.Run(() =>
+    {
+        const uint delete = 3;
+        // Allow undo (Recycle Bin), no "are you sure" (Desk Wheel asks), no progress window, but do warn
+        // if something is too big for the Recycle Bin and would be deleted for good.
+        const ushort flags = 0x0040 | 0x0010 | 0x0004 | 0x4000;
+        var op = new ShFileOp
+        {
+            Function = delete,
+            From = string.Concat(paths.Select(p => Path.GetFullPath(p) + "\0")) + "\0",
+            Flags = flags,
+        };
+        var code = SHFileOperation(ref op);
+        var moved = paths.Where(p => !File.Exists(p) && !Directory.Exists(p)).ToList();
+        string? problem = moved.Count == paths.Count ? null
+            : op.Aborted ? "Cancelled: nothing more was deleted."
+            : code != 0 ? $"Windows couldn't move some items to the Recycle Bin (code 0x{code:X}). They may be open in another app."
+            : "Some items couldn't be moved to the Recycle Bin.";
+        return ((IReadOnlyList<string>)moved, problem);
+    });
+
     public void Reveal(string path) =>
         Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{path}\"") { UseShellExecute = false })?.Dispose();
 

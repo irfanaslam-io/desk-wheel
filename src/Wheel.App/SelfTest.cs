@@ -105,6 +105,15 @@ internal static class SelfTest
         Check("PDF flatten", () => pdf is null ? "no PDF" : Produced(Wait(ImageEngine.RebuildPdfAsync(pdf, grey: false)), "PDF"));
         Check("PDF clean", () => pdf is null ? "no PDF" : Produced(PdfTools.Clean(pdf), "PDF"));
 
+        // ---- disk space ----
+        Check("disk space scan", () =>
+        {
+            var tree = Task.Run(() => Wheel.Core.Disk.DiskScanner.ScanAsync(folder)).GetAwaiter().GetResult();
+            var expected = Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories).Sum(f => new FileInfo(f).Length);
+            if (tree.Size != expected) return $"sizes don't add up: {tree.Size} vs {expected}";
+            return Wheel.Core.Disk.SunburstLayout.Layout(tree).Count > 0 ? null : "no chart";
+        });
+
         // ---- searchable PDF (the system's text recognition: Apple Vision, Windows OCR or Tesseract) ----
         if (!OcrEngine.IsAvailable)
         {

@@ -455,6 +455,19 @@ internal sealed class App : Application, INotifier, IScreenToolHost
         _history.Activate();
     }
 
+    /// <summary>The Disk Space window, scanning the given folder (the home folder if none).</summary>
+    private void OpenDisk(string? folder)
+    {
+        _wheel?.CloseWheel();
+        folder ??= Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        Usage.Screen("disk");
+        var window = new DiskWindow(_platform, folder, paths =>
+            OpenWheel(new WheelWindow(_platform, _caps, WheelMode.Convert, System.Linq.Enumerable.ToArray(paths), clickMode: true), w => w.ShowAtCursor()));
+        _platform.BringToFront();
+        window.Show();
+        window.Activate();
+    }
+
     private async Task CopyTextFromAsync(string imagePath)
     {
         try
@@ -525,6 +538,7 @@ internal sealed class App : Application, INotifier, IScreenToolHost
             case "cap.selected": _ = OpenWheelForSelectionAsync(null); break;
             case "cap.settings": OpenSettings(); break;
             case "cap.history": OpenHistory(); break;
+            case "cap.disk": OpenDisk(null); break;
             case "cap.clipboard": OpenClipboard(); break;
             case "cap.color": _ = Tools.PickColorAsync(AnyWindow()); break;
             case "cap.qr": _ = Tools.ScanQrAsync(); break;
@@ -675,6 +689,8 @@ internal sealed class App : Application, INotifier, IScreenToolHost
                 OpenRename(paths);
             else if (option.Id == "img.view")
                 OpenViewer(paths);
+            else if (option.Id == "act.disk")
+                OpenDisk(paths.Count == 1 && System.IO.Directory.Exists(paths[0]) ? paths[0] : System.IO.Path.GetDirectoryName(paths[0]));
             else
                 _ = _jobs.RunAsync(option, paths);
         };
@@ -784,6 +800,10 @@ internal sealed class App : Application, INotifier, IScreenToolHost
             toolItem.Click += (_, _) => run();
             menu.Items.Add(toolItem);
         }
+
+        var diskItem = new NativeMenuItem("Disk space…");
+        diskItem.Click += (_, _) => OpenDisk(null);
+        menu.Items.Add(diskItem);
 
         var historyItem = new NativeMenuItem("History…");
         historyItem.Click += (_, _) => OpenHistory();

@@ -46,6 +46,7 @@ Drag a file onto the orange button at the edge of your screen and drop it on wha
 - **Searchable PDFs (OCR):** scanned PDFs get their words as invisible text, so they can be searched and copied while looking the same. English and Arabic, on your computer.
 - **PDF tools:** merge, split, keep, reorder or delete pages, rotate, page numbers, watermark, compress, grey and flattened copies, pull out the pictures, remove hidden details, and add or remove passwords (AES-256).
 - **Picture tools:** resize, compress, square crop, flip, black and white, watermark (Arabic too), combine into a row, column or grid, remove photo location data (EXIF), cut out backgrounds (Mac), app icon and website favicon sets, and copy as Base64.
+- **Disk space:** a list and ring chart of what's taking up space, with Largest files; open, show, rename, ZIP or move items to the Trash / Recycle Bin, or collect them from several folders and remove them together.
 - **Video and audio editing:** trim to the second, join clips, speed up or slow down (voices keep their pitch), rotate, flip, 720p and 1080p copies, a thumbnail sheet of 16 frames, and subtitles added as a track or burned into the picture (Arabic too).
 - **Archives, like WinRAR:** open RAR, 7z, ZIP, TAR, TAR.GZ / BZ2 / XZ, GZ, BZ2, XZ and ISO, password-protected ones too; make ZIP (optionally with an AES-256 password) and TAR.GZ. Harmful archives that try to write outside their folder are refused.
 - **File and text tools:** SHA-256 and MD5 checksums, word counts, join text or CSV files, CSV to JSON, remove hidden details from Word, Excel and PowerPoint files, and bulk rename with undo.
@@ -97,7 +98,7 @@ The [user guide](docs/USER-GUIDE.md) covers every tool in detail.
 
 | Wheel | What's on it |
 | --- | --- |
-| **Screenshot** | Area, Window, Full, Scroll, Text, Clipboard, Record, then **More ›** for GIF, Colour, Ruler, QR, Make QR, 5 s and 10 s timers, Files, History and Settings |
+| **Screenshot** | Area, Window, Full, Scroll, Text, Clipboard, Record, then **More ›** for GIF, Colour, Ruler, QR, Make QR, 5 s and 10 s timers, Files, History, Disk and Settings |
 | **Convert** | Images: PNG, JPG, WebP, HEIC (Mac), AVIF, ICO, TIFF, GIF, BMP · PDF → PNG, JPG, TXT · Video: MP4, WebM, MKV, MOV, GIF, MP3, M4A · Audio: MP3, M4A, WAV, FLAC, OGG, Opus · Office: PDF, DOCX, XLSX, PPTX, CSV · RAR, 7z, ZIP, TAR.*, ISO → Extract, ZIP, TAR.GZ · CSV → JSON · SRT ↔ VTT · Markdown: Read, HTML · JSON: View, Format, Minify, CSV, HTML |
 | **Tools** | Images: Compress, 50%, Size…, Rotate, No EXIF, View, Edit, Square, Flip, Grey, Watermark…, Text, Cut out, Icons, Favicon, PDF · several images: Row, Column, Grid · PDF: Merge, Pages…, Delete…, Rotate, Compress, Searchable, Watermark…, Lock, Unlock, Split, Numbers, Images, Grey, Flatten, Clean · Video: Trim…, Compress, 50%, Mute, Frame, Join, Speed…, Rotate, Flip, 720p, 1080p, Sheet, Subtitles, Burn in · Audio: Trim…, Join, Speed…, Normalize, Mono, Compress · Rename, ZIP |
 | **Actions** | Copy files, Copy image, Copy path, Copy name, Open terminal here, Reveal, Copy to Desktop, Checksum, Base64 (pictures) |

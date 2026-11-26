@@ -194,6 +194,7 @@ public static class OptionRegistry
         new("act.copy-desktop", "Desktop", "Copy to the Desktop", WheelMode.Actions, EngineKind.Action, AcceptsMany: true),
         new("act.copy-name", "Name", "Copy file name(s) without folder", WheelMode.Actions, EngineKind.Action, AcceptsMany: true),
         new("act.checksum", "Checksum", "Copy the SHA-256 and MD5 checksums (several files: also saved as checksums.sha256)", WheelMode.Actions, EngineKind.Action, AcceptsMany: true),
+        new("act.disk", "Sizes", "What's taking up space in this folder (or the selection's folder): sizes, chart, clean-up", WheelMode.Actions, EngineKind.Window, AcceptsMany: true),
         new("act.base64", "Base64", "Copy the picture as a data URL (data:image/…;base64), for HTML, CSS or code", WheelMode.Actions, EngineKind.Action),
     ];
 
@@ -216,6 +217,7 @@ public static class OptionRegistry
         new("cap.delay10", "10 s", "Area capture after 10 seconds: time to open a menu", WheelMode.Capture, EngineKind.Capture),
         new("cap.selected", "Files", "Convert the files selected in Finder / Explorer", WheelMode.Capture, EngineKind.Capture),
         new("cap.history", "History", "Recent screenshots and converted files", WheelMode.Capture, EngineKind.Capture),
+        new("cap.disk", "Disk", "What's taking up space: every folder and file by size, with a chart. Open, rename, ZIP or remove them", WheelMode.Capture, EngineKind.Capture),
         new("cap.settings", "Settings", "Folders, formats and other options", WheelMode.Capture, EngineKind.Capture),
     ];
 
