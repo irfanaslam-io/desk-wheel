@@ -6,7 +6,7 @@ namespace Wheel.Core;
 /// </summary>
 public static class OutputPaths
 {
-    private static readonly string[] DoubleExtensions = [".tar.gz", ".tar.bz2", ".tar.xz"];
+    private static readonly string[] DoubleExtensions = [".tar.gz", ".tar.bz2", ".tar.xz", ".tar.lz"];
 
     /// <summary>
     /// When set (Settings → "Save converted files to a folder"), every result goes here instead of beside the original.

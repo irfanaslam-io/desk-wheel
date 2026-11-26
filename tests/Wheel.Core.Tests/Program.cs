@@ -59,7 +59,7 @@ Test("image + video has no common conversions but still gets ZIP tool and action
 {
     Eq(0, OptionRegistry.GetOptions(WheelMode.Convert, ["a.png", "b.mp4"], caps).Count, "convert count");
     True(Ids(OptionRegistry.GetOptions(WheelMode.Tools, ["a.png", "b.mp4"], caps)).Contains("any.zip"), "zip tool missing");
-    Eq(6, OptionRegistry.GetOptions(WheelMode.Actions, ["a.png", "b.mp4"], caps).Count, "action count");
+    Eq(7, OptionRegistry.GetOptions(WheelMode.Actions, ["a.png", "b.mp4"], caps).Count, "action count (Checksum included)");
     True(Ids(OptionRegistry.GetOptions(WheelMode.Actions, ["a.png"], caps)).Contains("act.copy-image"), "one image: copy picture");
     True(!Ids(OptionRegistry.GetOptions(WheelMode.Actions, ["a.pdf"], caps)).Contains("act.copy-image"), "a PDF: no copy picture");
 });
@@ -204,7 +204,7 @@ Test("Office files: PDF needs an office suite; text formats also work with textu
     Eq("doc.to-txt,doc.to-html,doc.to-odt", string.Join(",", textutil), "textutil: no PDF, no DOCX→DOCX");
     var lo = caps with { HasLibreOffice = true };
     Eq("doc.to-pdf,doc.to-docx,doc.to-html,doc.to-odt", string.Join(",", Ids(OptionRegistry.GetOptions(WheelMode.Convert, ["notes.txt"], lo))), "txt with LibreOffice");
-    Eq("xls.to-pdf,xls.to-xlsx,xls.to-ods", string.Join(",", Ids(OptionRegistry.GetOptions(WheelMode.Convert, ["data.csv"], lo))), "csv");
+    Eq("xls.to-pdf,xls.to-xlsx,xls.to-ods,csv.to-json", string.Join(",", Ids(OptionRegistry.GetOptions(WheelMode.Convert, ["data.csv"], lo))), "csv (JSON needs no office suite)");
     Eq("ppt.to-pdf,ppt.to-odp", string.Join(",", Ids(OptionRegistry.GetOptions(WheelMode.Convert, ["deck.pptx"], lo))), "pptx");
     True(!Ids(OptionRegistry.GetOptions(WheelMode.Convert, ["data.xlsx"], caps with { HasTextutil = true })).Any(), "textutil can't do spreadsheets");
 });
@@ -1326,6 +1326,170 @@ Test("Mixed Arabic and English lines are split into runs in screen order", () =>
     Eq("L:2026 | R:سري للغاية ", Show("سري للغاية 2026"), "Arabic first: runs reversed for screen order");
     Eq("R:سري", Show("سري"), "Arabic only");
     Eq("L:CONFIDENTIAL", Show("CONFIDENTIAL"), "English only");
+});
+
+// ---------------------------------------------------------------- archives (RAR, 7z, ISO, TAR.*, single files, passwords)
+string FixtureArchives()
+{
+    for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
+    {
+        var candidate = Path.Combine(dir.FullName, "tests", "Wheel.Core.Tests", "fixtures", "archives");
+        if (Directory.Exists(candidate)) return candidate;
+        candidate = Path.Combine(dir.FullName, "fixtures", "archives");
+        if (Directory.Exists(candidate)) return candidate;
+    }
+    throw new DirectoryNotFoundException("fixtures/archives");
+}
+string Fixture(string name)
+{
+    var dir = Directory.CreateTempSubdirectory("dw-arc").FullName;
+    var copy = Path.Combine(dir, name);
+    File.Copy(Path.Combine(FixtureArchives(), name), copy);
+    return copy;
+}
+WheelOption ArcOpt(string id) => OptionRegistry.All.First(o => o.Id == id);
+
+Test("Archives: 7z, ISO, TAR.BZ2 and TAR.XZ open with their folders", () =>
+{
+    foreach (var name in new[] { "sample.7z", "sample.iso", "sample.tar.bz2", "sample.tar.xz" })
+    {
+        var folder = Wheel.Core.Converters.ArchiveConverter.Extract(Fixture(name));
+        Eq("Hello from Desk Wheel", File.ReadAllText(Path.Combine(folder, "hello.txt")).Trim(), name + " hello.txt");
+        Eq("Nested file", File.ReadAllText(Path.Combine(folder, "docs", "notes.md")).Trim(), name + " docs/notes.md");
+    }
+    Eq(FileKind.Archive, FileClassifier.Classify("x.rar"), "rar kind");
+    Eq(FileKind.Archive, FileClassifier.Classify("x.7z"), "7z kind");
+    Eq(FileKind.Archive, FileClassifier.Classify("x.iso"), "iso kind");
+});
+Test("Archives: single .gz, .bz2 and .xz files come out as the file", () =>
+{
+    foreach (var name in new[] { "hello.txt.gz", "hello.txt.bz2", "hello.txt.xz" })
+    {
+        var file = Wheel.Core.Converters.ArchiveConverter.Extract(Fixture(name));
+        Eq("hello.txt", Path.GetFileName(file), name);
+        Eq("Hello from Desk Wheel", File.ReadAllText(file).Trim(), name + " content");
+    }
+});
+Test("Archives: RAR 4 and RAR 5 open; RAR converts to ZIP", () =>
+{
+    foreach (var name in new[] { "Rar.rar", "Rar5.rar" })
+    {
+        var folder = Wheel.Core.Converters.ArchiveConverter.Extract(Fixture(name));
+        True(Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories).Count() >= 3, name + " has files");
+    }
+    var zip = Wheel.Core.Converters.ArchiveConverter.Run(ArcOpt("arc.to-zip"), [Fixture("Rar5.rar")]);
+    True(zip.Success && zip.Outputs[0].EndsWith(".zip"), zip.Error ?? "");
+    using var opened = System.IO.Compression.ZipFile.OpenRead(zip.Outputs[0]);
+    True(opened.Entries.Count >= 3, "zip has the files");
+});
+Test("Archives: passwords for 7z (also hidden names), RAR 5 and ZIP; wrong ones refused", () =>
+{
+    foreach (var (name, password) in new[] { ("encrypted.7z", "secret"), ("encrypted-names.7z", "secret"), ("Rar5.encrypted_filesOnly.rar", "test") })
+    {
+        var file = Fixture(name);
+        True(Wheel.Core.Converters.ArchiveConverter.NeedsPassword(file), name + " needs a password");
+        var none = Wheel.Core.Converters.ArchiveConverter.Run(ArcOpt("arc.extract"), [file]);
+        True(!none.Success && none.Error!.Contains("password"), name + " without: " + none.Error);
+        var wrong = Wheel.Core.Converters.ArchiveConverter.Run(ArcOpt("arc.extract"), [file], "nope");
+        True(!wrong.Success && wrong.Error!.Contains("wrong"), name + " wrong: " + wrong.Error);
+        var right = Wheel.Core.Converters.ArchiveConverter.Run(ArcOpt("arc.extract"), [file], password);
+        True(right.Success && Directory.EnumerateFiles(right.Outputs[0], "*", SearchOption.AllDirectories).Any(), name + " right: " + right.Error);
+    }
+    True(!Wheel.Core.Converters.ArchiveConverter.NeedsPassword(Fixture("sample.7z")), "plain 7z needs none");
+
+    var dir = Directory.CreateTempSubdirectory("dw-zip").FullName;
+    var a = Path.Combine(dir, "report.txt");
+    File.WriteAllText(a, "secret report");
+    var locked = Wheel.Core.Converters.ArchiveConverter.ZipWithPassword([a], "pa55word");
+    True(locked.Success, locked.Error ?? "");
+    Eq("report (protected).zip", Path.GetFileName(locked.Outputs[0]), "name");
+    True(Wheel.Core.Converters.ArchiveConverter.NeedsPassword(locked.Outputs[0]), "the ZIP needs its password");
+    foreach (var other in new[] { "aes-other-tool.zip", "zipcrypto.zip" }.Where(n => File.Exists(Path.Combine(FixtureArchives(), n))))
+    {
+        var made = Fixture(other);
+        True(Wheel.Core.Converters.ArchiveConverter.NeedsPassword(made), other + " needs a password");
+        var ok = Wheel.Core.Converters.ArchiveConverter.Run(ArcOpt("arc.extract"), [made], "secret");
+        True(ok.Success && File.ReadAllText(Path.Combine(ok.Outputs[0], "hello.txt")).Contains("Hello"), other + ": " + ok.Error);
+        True(!Wheel.Core.Converters.ArchiveConverter.Run(ArcOpt("arc.extract"), [Fixture(other)], "nope").Success, other + " wrong password refused");
+    }
+    True(!System.Text.Encoding.Latin1.GetString(File.ReadAllBytes(locked.Outputs[0])).Contains("secret report"), "content is encrypted");
+    True(!Wheel.Core.Converters.ArchiveConverter.Run(ArcOpt("arc.extract"), [locked.Outputs[0]], "wrong").Success, "wrong password refused");
+    var opened = Wheel.Core.Converters.ArchiveConverter.Run(ArcOpt("arc.extract"), [locked.Outputs[0]], "pa55word");
+    Eq("secret report", File.ReadAllText(Path.Combine(opened.Outputs[0], "report.txt")), "opened with the password");
+});
+Test("Archives: an archive that tries to escape its folder is refused, nothing written (zip slip)", () =>
+{
+    var file = Fixture("zip-slip.zip");
+    var parent = Path.GetDirectoryName(file)!;
+    var r = Wheel.Core.Converters.ArchiveConverter.Run(ArcOpt("arc.extract"), [file]);
+    True(!r.Success && r.Error!.Contains("outside its folder"), r.Error ?? "reported success");
+    True(!File.Exists(Path.Combine(parent, "escaped.txt")) && !File.Exists(Path.Combine(Path.GetDirectoryName(parent)!, "escaped.txt")), "../ never written");
+    True(!Directory.Exists(Path.Combine(parent, "zip-slip")), "no half-filled folder left");
+    var root = Path.GetFullPath(Path.GetTempPath());
+    True(Wheel.Core.Converters.ArchiveConverter.SafeTarget(root, "../x") is null, "../x");
+    True(Wheel.Core.Converters.ArchiveConverter.SafeTarget(root, "a/../../x") is null, "a/../../x");
+    True(Wheel.Core.Converters.ArchiveConverter.SafeTarget(root, "C:/x") is null, "drive letter");
+    True(Wheel.Core.Converters.ArchiveConverter.SafeTarget(root, "a/b.txt") is not null, "normal path");
+});
+
+// ---------------------------------------------------------------- file and text tools
+Test("Checksums, word counts, join, CSV → JSON", () =>
+{
+    var dir = Directory.CreateTempSubdirectory("dw-txt").FullName;
+    var hello = Path.Combine(dir, "hello.txt");
+    File.WriteAllText(hello, "Hello from Desk Wheel\n");
+    var c = Wheel.Core.Files.FileTools.ChecksumOf(hello);
+    Eq(Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(hello))), c.Sha256, "sha-256");
+    Eq(Convert.ToHexStringLower(System.Security.Cryptography.MD5.HashData(File.ReadAllBytes(hello))), c.Md5, "md5");
+    var two = Path.Combine(dir, "two.txt");
+    File.WriteAllText(two, "Second file here.\n\nWith a paragraph.");
+    var (text, saved) = Wheel.Core.Files.FileTools.Checksums([hello, two]);
+    True(saved is not null && File.ReadAllText(saved).Contains($"{c.Sha256}  hello.txt"), text);
+
+    var count = Wheel.Core.Files.FileTools.Count(two);
+    Eq(6, count.Words, "words");
+    Eq(2, count.Paragraphs, "paragraphs");
+
+    var joined = Wheel.Core.Files.FileTools.Join([two, hello]);
+    Eq("Hello from Desk Wheel\n\nSecond file here.\n\nWith a paragraph.\n", File.ReadAllText(joined.Outputs[0]), "joined in name order");
+
+    var csv1 = Path.Combine(dir, "a.csv"); File.WriteAllText(csv1, "name,age,city\nAli,30,Riyadh\n");
+    var csv2 = Path.Combine(dir, "b.csv"); File.WriteAllText(csv2, "name,age,city\n\"Sara, A\",0050,Jeddah\n");
+    var csvJoined = Wheel.Core.Files.FileTools.Join([csv1, csv2]);
+    Eq("name,age,city|Ali,30,Riyadh|\"Sara, A\",0050,Jeddah", string.Join("|", File.ReadAllLines(csvJoined.Outputs[0]).Select(l => l.TrimStart('\uFEFF'))), "one header");
+    var json = Wheel.Core.Files.FileTools.CsvToJson(csvJoined.Outputs[0]);
+    var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(json.Outputs[0]));
+    Eq(30, doc.RootElement[0].GetProperty("age").GetInt32(), "number");
+    Eq("0050", doc.RootElement[1].GetProperty("age").GetString()!, "leading zero kept as text");
+    Eq("Sara, A", doc.RootElement[1].GetProperty("name").GetString()!, "quoted comma");
+    True(OptionRegistry.GetOptions(WheelMode.Convert, [csv1], new Capabilities(false)).Any(o => o.Id == "csv.to-json"), "JSON on the CSV wheel");
+    True(OptionRegistry.GetOptions(WheelMode.Tools, [csv1, csv2], new Capabilities(false)).Any(o => o.Id == "txt.join"), "Join for two CSVs");
+    True(!OptionRegistry.GetOptions(WheelMode.Tools, [csv1, hello], new Capabilities(false)).Any(o => o.Id == "txt.join"), "no Join for mixed types");
+});
+Test("Office clean removes author, company and custom properties; the text stays", () =>
+{
+    var dir = Directory.CreateTempSubdirectory("dw-office").FullName;
+    var docx = Path.Combine(dir, "letter.docx");
+    using (var zip = System.IO.Compression.ZipFile.Open(docx, System.IO.Compression.ZipArchiveMode.Create))
+    {
+        void Put(string name, string xml) { using var w = new StreamWriter(zip.CreateEntry(name).Open()); w.Write(xml); }
+        Put("[Content_Types].xml", "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Override PartName=\"/docProps/custom.xml\" ContentType=\"x\"/><Override PartName=\"/word/document.xml\" ContentType=\"y\"/></Types>");
+        Put("_rels/.rels", "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"r1\" Target=\"word/document.xml\"/><Relationship Id=\"r2\" Target=\"docProps/custom.xml\"/></Relationships>");
+        Put("docProps/core.xml", "<cp:coreProperties xmlns:cp=\"http://schemas.openxmlformats.org/package/2006/metadata/core-properties\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\"><dc:title>Letter</dc:title><dc:creator>Secret Person</dc:creator><cp:lastModifiedBy>Secret Person</cp:lastModifiedBy></cp:coreProperties>");
+        Put("docProps/app.xml", "<Properties xmlns=\"http://schemas.openxmlformats.org/officeDocument/2006/extended-properties\"><Company>Secret Co</Company><TotalTime>42</TotalTime></Properties>");
+        Put("docProps/custom.xml", "<Properties><property name=\"Client\">Secret Client</property></Properties>");
+        Put("word/document.xml", "<w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:body><w:p><w:r><w:t>Dear reader, hello.</w:t></w:r></w:p></w:body></w:document>");
+    }
+    Eq(3, Wheel.Core.Files.FileTools.Count(docx).Words, "words in a docx");
+    var clean = Wheel.Core.Files.FileTools.CleanOffice(docx);
+    True(clean.Success, clean.Error ?? "");
+    using var cleaned = System.IO.Compression.ZipFile.OpenRead(clean.Outputs[0]);
+    string Read(string part) { using var r = new StreamReader(cleaned.GetEntry(part)!.Open()); return r.ReadToEnd(); }
+    var all = string.Concat(cleaned.Entries.Select(e => { using var r = new StreamReader(e.Open()); return r.ReadToEnd(); }));
+    True(!all.Contains("Secret"), "no secrets left");
+    True(Read("docProps/core.xml").Contains("Letter"), "title kept");
+    True(Read("word/document.xml").Contains("Dear reader"), "text untouched");
+    True(cleaned.GetEntry("docProps/custom.xml") is null && !Read("_rels/.rels").Contains("custom.xml"), "custom properties gone, and unlinked");
 });
 
 var failed = 0;

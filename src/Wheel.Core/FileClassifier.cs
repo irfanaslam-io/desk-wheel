@@ -25,7 +25,11 @@ public static class FileClassifier
 
         // Archives
         [".zip"] = FileKind.Archive, [".tar"] = FileKind.Archive, [".gz"] = FileKind.Archive,
-        [".tgz"] = FileKind.Archive,
+        [".tgz"] = FileKind.Archive, [".rar"] = FileKind.Archive, [".7z"] = FileKind.Archive,
+        [".bz2"] = FileKind.Archive, [".tbz"] = FileKind.Archive, [".tbz2"] = FileKind.Archive,
+        [".xz"] = FileKind.Archive, [".txz"] = FileKind.Archive, [".lz"] = FileKind.Archive,
+        [".iso"] = FileKind.Archive, [".cbz"] = FileKind.Archive, [".cbr"] = FileKind.Archive,
+        [".jar"] = FileKind.Archive, [".apk"] = FileKind.Archive,
 
         // Subtitles
         [".srt"] = FileKind.Subtitle, [".vtt"] = FileKind.Subtitle,

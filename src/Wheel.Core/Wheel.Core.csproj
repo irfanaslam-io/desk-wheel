@@ -14,6 +14,9 @@
 
   <ItemGroup>
     <!-- QR codes and barcodes: reading from the screen and making new ones (Apache-2.0, pure .NET). -->
+    <PackageReference Include="DiscUtils.Iso9660" Version="0.16.13" />
+    <PackageReference Include="SharpCompress" Version="0.50.8" />
+    <PackageReference Include="SharpZipLib" Version="1.4.2" />
     <PackageReference Include="ZXing.Net" Version="0.16.11" />
     <!-- PDF passwords and compression, in-process (MIT): nothing extra to install. -->
     <PackageReference Include="PDFsharp" Version="6.2.4" />

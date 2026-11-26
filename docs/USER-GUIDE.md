@@ -165,6 +165,13 @@ In the editor, click **Beautify** (or press F) to put the screenshot on a colour
 | Numbers | Tools (PDF) | Page numbers "1 / 12" at the bottom of every page |
 | Compress | Tools (PDF) | Smaller PDF: pictures re-saved at print quality (about 150 DPI), text and drawings untouched |
 | Lock / Unlock | Tools (PDF) | Add or remove a password, AES-256 |
+| Extract, ZIP, TAR.GZ | Convert (archives) | Opens RAR (4 and 5), 7z, ZIP, TAR, TAR.GZ / .BZ2 / .XZ / .LZ, single GZ / BZ2 / XZ files and ISO disc images, and converts any of them to ZIP or TAR.GZ. Password-protected archives ask for the password. An archive that tries to put files outside its folder is refused and nothing is extracted. Desk Wheel can open RAR files but can't make them (only WinRAR can) |
+| ZIP, Lock ZIP | Tools (any files) | One ZIP of everything selected; **Lock ZIP** adds a password (AES-256). Password ZIPs open in Desk Wheel, 7-Zip and WinRAR, but not in File Explorer's or macOS's built-in ZIP support |
+| Checksum | Actions (any files) | Copies the SHA-256 and MD5 of a file, to check a download. Several files: one line each, also saved as `checksums.sha256` |
+| Words | Tools (TXT, MD, DOCX, ODT, HTML, CSV, SRT…) | Counts words, characters, lines and paragraphs, with a reading time; the summary is copied too |
+| Join | Tools (2 or more TXT, MD, CSV or LOG files of one kind) | One file in name order: `Joined.txt`. CSV files keep a single header row |
+| JSON | Convert (CSV) | One JSON object per row, keyed by the header row; numbers stay numbers, `0050` stays text |
+| Clean | Tools (DOCX, XLSX, PPTX) | A copy without the author, last editor, company, template, editing time, custom properties and thumbnail. The content is untouched |
 | Rename | Tools (any files, or a folder's files) | Bulk rename with a live preview: `{name}`, `{n}`, `{date}`, `{folder}`, find and replace, letter case. Never overwrites; Undo puts names back |
 
 **Watched folders** (Settings): pick a folder and what to do, for example *Images → WebP*. Every new file that arrives there is converted automatically, beside the original. Desk Wheel's own results aren't processed again, and files still downloading are waited for.

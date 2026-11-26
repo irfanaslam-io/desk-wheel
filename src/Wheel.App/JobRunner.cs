@@ -45,6 +45,29 @@ internal sealed class JobRunner
                 return;
             }
 
+            if (option.Id == "act.checksum")
+            {
+                _notifier.Notify("Working…", $"Checksums of {Describe(paths)}");
+                var (text, saved) = await Task.Run(() => Wheel.Core.Files.FileTools.Checksums(paths));
+                _platform.CopyText(text);
+                var first = text.Split('\n').FirstOrDefault(l => l.StartsWith("SHA-256: ")) is { } sha ? sha[9..25] + "…" : "";
+                _notifier.Notify("Checksums copied", saved is null ? $"SHA-256 {first} (and MD5)" : $"Saved as {Path.GetFileName(saved)}", reveal: saved);
+                return;
+            }
+
+            if (option.Id == "txt.words")
+            {
+                var counts = await Task.Run(() => paths.Select(Wheel.Core.Files.FileTools.Count).ToList());
+                var total = Wheel.Core.Files.FileTools.CountText("") with
+                {
+                    Words = counts.Sum(c => c.Words), Characters = counts.Sum(c => c.Characters),
+                    CharactersNoSpaces = counts.Sum(c => c.CharactersNoSpaces), Lines = counts.Sum(c => c.Lines), Paragraphs = counts.Sum(c => c.Paragraphs),
+                };
+                _platform.CopyText(total.ToString());
+                _notifier.Notify(paths.Count == 1 ? Path.GetFileName(paths[0]) : $"{paths.Count} files", total + " (copied)");
+                return;
+            }
+
             if (option.Engine == EngineKind.Action)
             {
                 ReportAction(option, paths, FileActions.Run(_platform, option, paths));
@@ -92,6 +115,20 @@ internal sealed class JobRunner
                     if (keep) _lastPages = answerText;
                     break;
                 }
+                case "any.zip-lock":
+                    password = await PromptWindow.AskAsync("ZIP with a password", $"Password for {Describe(paths)}. Anyone opening the ZIP will need it; there's no way to recover it.",
+                        password: true, confirmPassword: true, check: t => t.Length < 4 ? "Use at least 4 characters." : null);
+                    if (password is null) return;
+                    break;
+                case "arc.extract" or "arc.to-zip" or "arc.to-targz":
+                {
+                    var locked = await Task.Run(() => paths.Where(ArchiveConverter.NeedsPassword).ToList());
+                    if (locked.Count == 0) break;
+                    password = await PromptWindow.AskAsync("Password", $"{Describe(locked)} {(locked.Count == 1 ? "is" : "are")} protected. Password:", password: true,
+                        check: t => t.Length == 0 ? "Type the password." : null);
+                    if (password is null) return;
+                    break;
+                }
                 case "pdf.watermark" or "img.watermark":
                     answerText = await PromptWindow.AskAsync("Watermark",
                         option.Id == "pdf.watermark" ? $"Text across every page of {Describe(paths)}:" : $"Text for the corner of {Describe(paths)}:",
@@ -119,6 +156,14 @@ internal sealed class JobRunner
                     if (password is null) return;
                     break;
             }
+            if (option.Id == "any.zip-lock")
+            {
+                _notifier.Notify("Working…", $"ZIP with a password: {Describe(paths)}");
+                var zipped = await Task.Run(() => ArchiveConverter.ZipWithPassword(paths, password!));
+                Remember(option, paths, [zipped]);
+                Report([zipped]);
+                return;
+            }
             if (size is not null || password is not null || answerText is not null || option.Engine is EngineKind.PdfEdit or EngineKind.Vision)
             {
                 _notifier.Notify("Working…", $"{option.Hint}: {Describe(paths)}");
@@ -138,6 +183,7 @@ internal sealed class JobRunner
                         "pdf.flatten" => await ImageEngine.RebuildPdfAsync(path, grey: false),
                         "pdf.clean" => await Task.Run(() => PdfTools.Clean(path)),
                         "img.watermark" => await ImageEngine.WatermarkAsync(path, answerText!),
+                        "arc.extract" or "arc.to-zip" or "arc.to-targz" => await Task.Run(() => ArchiveConverter.Run(option, [path], password)),
                         _ => JobResult.Fail($"No engine for {option.Id}"),
                     });
                 Remember(option, paths, done);
@@ -354,6 +400,13 @@ internal sealed class JobRunner
         EngineKind.Pdf => Task.Run(() => PdfConverter.Run(option, paths, ImageEngine.WriteRenderedPage)),
         EngineKind.Ffmpeg => FfmpegConverter.RunAsync(option, paths[0]),
         EngineKind.Archive => Task.Run(() => ArchiveConverter.Run(option, paths)),
+        EngineKind.Text => Task.Run(() => option.Id switch
+        {
+            "txt.join" => Wheel.Core.Files.FileTools.Join(paths),
+            "csv.to-json" => Wheel.Core.Files.FileTools.CsvToJson(paths[0]),
+            "off.clean" => Wheel.Core.Files.FileTools.CleanOffice(paths[0]),
+            _ => JobResult.Fail($"No engine for {option.Id}"),
+        }),
         EngineKind.Subtitle => Task.Run(() => SubtitleConverter.Run(option, paths[0])),
         EngineKind.Office => OfficeConverter.RunAsync(option, paths[0]),
         EngineKind.Markdown => Task.Run(() => MarkdownAssets.Shipped() is { } assets

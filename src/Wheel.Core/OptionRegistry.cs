@@ -148,9 +148,23 @@ public static class OptionRegistry
     };
 
     /// <summary>Tools any selection gets, including folders and mixed selections.</summary>
+    /// <summary>Options that depend on the exact file type, not just its kind (shown when every file passes).</summary>
+    private static readonly (WheelOption Option, Func<IReadOnlyList<string>, bool> When)[] ByExtension =
+    [
+        (C("csv.to-json", "JSON", "Rows as JSON objects, keyed by the header row", EngineKind.Text, ".json"),
+            p => p.All(f => Path.GetExtension(f).Equals(".csv", StringComparison.OrdinalIgnoreCase))),
+        (T("txt.words", "Words", "Count words, characters, lines and reading time", EngineKind.Text, many: true),
+            p => p.All(Files.FileTools.CanCount)),
+        (T("txt.join", "Join", "One file from several, in name order (CSV keeps one header row)", EngineKind.Text, many: true, min: 2),
+            Files.FileTools.CanJoin),
+        (T("off.clean", "Clean", "Remove author, company, editing time and other hidden details", EngineKind.Text),
+            p => p.All(Files.FileTools.CanCleanOffice)),
+    ];
+
     private static readonly WheelOption[] AnySelectionTools =
     [
         T("any.zip", "ZIP", "Compress everything into one ZIP", EngineKind.Archive, ".zip", many: true),
+        T("any.zip-lock", "Lock ZIP", "One ZIP with a password (AES-256). Opens in Desk Wheel, 7-Zip and WinRAR", EngineKind.Archive, ".zip", many: true),
         T("any.rename", "Rename", "Rename in bulk: numbers, dates, find and replace (with preview and undo)", EngineKind.Window, many: true),
     ];
 
@@ -163,6 +177,7 @@ public static class OptionRegistry
         new("act.reveal", "Reveal", "Show the file in its folder", WheelMode.Actions, EngineKind.Action),
         new("act.copy-desktop", "Desktop", "Copy to the Desktop", WheelMode.Actions, EngineKind.Action, AcceptsMany: true),
         new("act.copy-name", "Name", "Copy file name(s) without folder", WheelMode.Actions, EngineKind.Action, AcceptsMany: true),
+        new("act.checksum", "Checksum", "Copy the SHA-256 and MD5 checksums (several files: also saved as checksums.sha256)", WheelMode.Actions, EngineKind.Action, AcceptsMany: true),
         new("act.base64", "Base64", "Copy the picture as a data URL (data:image/…;base64), for HTML, CSS or code", WheelMode.Actions, EngineKind.Action),
     ];
 
@@ -186,7 +201,7 @@ public static class OptionRegistry
 
     /// <summary>Every option in the catalogue, for counting and tests.</summary>
     public static IEnumerable<WheelOption> All =>
-        ByKind.Values.SelectMany(v => v).Concat(AnySelectionTools).Concat(ActionOptions).Concat(CaptureOptions);
+        ByKind.Values.SelectMany(v => v).Concat(ByExtension.Select(x => x.Option)).Concat(AnySelectionTools).Concat(ActionOptions).Concat(CaptureOptions);
 
     public const string MoreId = "nav.more", BackId = "nav.back";
 
@@ -254,9 +269,11 @@ public static class OptionRegistry
             .Where(o => !(o.Mode == WheelMode.Convert && AllAlready(paths, o.TargetExtension)))
             .ToList();
 
+        result.AddRange(ByExtension.Where(x => x.Option.Mode == mode && paths.Count >= x.Option.MinItems && x.When(paths)).Select(x => x.Option));
+
         // ZIP-ing things that are already archives only wraps them in another archive.
         if (mode == WheelMode.Tools)
-            result.AddRange(AnySelectionTools.Where(o => o.Id != "any.zip" || !kinds.All(k => k == FileKind.Archive)));
+            result.AddRange(AnySelectionTools.Where(o => o.Id is not ("any.zip" or "any.zip-lock") || !kinds.All(k => k == FileKind.Archive)));
 
         return result;
     }

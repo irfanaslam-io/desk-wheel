@@ -19,6 +19,9 @@ Desk Wheel's own code is licensed under the PolyForm Small Business or PolyForm 
 | [github-markdown-css](https://github.com/sindresorhus/github-markdown-css) 5.9.0 | Markdown reader: GitHub's reading style | MIT | Yes (`engines/markdown/github-markdown.css`) |
 | Apple Vision / Windows OCR | Text recognition | Part of macOS / Windows | No: built into the system |
 | [Tesseract](https://github.com/tesseract-ocr/tesseract) | Text recognition when the system has none | Apache-2.0 | No: used only if installed |
+| [SharpCompress](https://github.com/adamhathcock/sharpcompress) 0.50.8 | Opening RAR, 7z, TAR, GZ, BZ2, XZ and LZ archives | MIT | Yes (NuGet package) |
+| [SharpZipLib](https://github.com/icsharpcode/SharpZipLib) 1.4.2 | ZIPs with a password (AES-256) | MIT | Yes (NuGet package) |
+| [DiscUtils](https://github.com/DiscUtils/DiscUtils) 0.16.13 | Opening ISO disc images | MIT | Yes (NuGet package) |
 | [ZXing.Net](https://github.com/micjahn/ZXing.Net) 0.16.11 | Reading and making QR codes and barcodes | Apache-2.0 | Yes (NuGet package) |
-| [SkiaSharp.HarfBuzz](https://github.com/mono/SkiaSharp) 2.88.9 | Joined Arabic text in the screenshot editor | MIT | Yes (NuGet package) |
+| [SkiaSharp.HarfBuzz](https://github.com/mono/SkiaSharp) 2.88.9 | Joined Arabic text in the editor and watermarks | MIT | Yes (NuGet package) |
 | [LibreOffice](https://www.libreoffice.org) | Office conversions | MPL-2.0 | No: used only if installed |

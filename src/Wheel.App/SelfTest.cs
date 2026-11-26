@@ -151,6 +151,18 @@ internal static class SelfTest
             return files.Contains("sample.png") ? null : $"extracted: {string.Join(", ", files)}";
         });
         Check("ZIP → TAR.GZ", () => zip is null ? "no ZIP" : Produced(ArchiveConverter.Run(Opt("arc.to-targz"), [zip]), "TAR.GZ"));
+        Check("ZIP with a password, opened again", () =>
+        {
+            var locked = ArchiveConverter.ZipWithPassword([png], "self-test");
+            if (Produced(locked, "ZIP") is { } problem) return problem;
+            if (!ArchiveConverter.NeedsPassword(locked.Outputs[0])) return "not protected";
+            if (ArchiveConverter.Run(Opt("arc.extract"), [locked.Outputs[0]], "wrong").Success) return "wrong password accepted";
+            var opened = ArchiveConverter.Run(Opt("arc.extract"), [locked.Outputs[0]], "self-test");
+            return Produced(opened, "folder") ?? (File.Exists(Path.Combine(opened.Outputs[0], "sample.png")) ? null : "picture missing");
+        });
+        Check("TAR.GZ opened again", () =>
+            Directory.GetFiles(folder, "*.tar.gz").FirstOrDefault() is { } tgz ? Produced(ArchiveConverter.Run(Opt("arc.extract"), [tgz]), "folder") : "no TAR.GZ");
+        Check("checksums", () => Wheel.Core.Files.FileTools.ChecksumOf(png).Sha256.Length == 64 ? null : "no SHA-256");
 
         // ---- JSON ----
         var json = Path.Combine(folder, "sample.json");
