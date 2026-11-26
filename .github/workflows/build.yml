@@ -20,7 +20,7 @@ jobs:
   core-tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
@@ -38,7 +38,7 @@ jobs:
     runs-on: macos-latest   # Apple silicon
     needs: core-tests
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
@@ -78,7 +78,7 @@ jobs:
       matrix:
         rid: [win-x64, win-arm64]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
@@ -127,7 +127,7 @@ jobs:
     runs-on: windows-11-arm
     needs: windows
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v4
         with:
           name: DeskWheel-win-arm64
@@ -148,7 +148,7 @@ jobs:
     env:
       RELEASES_REPO: ${{ github.repository }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0   # the tag's message becomes the release notes
       - uses: actions/download-artifact@v4
