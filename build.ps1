@@ -216,8 +216,8 @@ if ($Msix) {
     } finally { Pop-Location }
 
     $package = "dist\DeskWheel-$version-$Runtime.msix"
-    & $makeappx pack /d $layout /p $package /o | Out-Null
-    if ($LASTEXITCODE -ne 0) { Write-Error "makeappx failed." }
+    $packOutput = & $makeappx pack /d $layout /p $package /o 2>&1
+    if ($LASTEXITCODE -ne 0) { $packOutput | Write-Host; Write-Error "makeappx failed (its messages are above)." }
     Write-Host "Store package: $package  (upload it in Partner Center; Microsoft signs it)" -ForegroundColor Green
 }
 } finally {
