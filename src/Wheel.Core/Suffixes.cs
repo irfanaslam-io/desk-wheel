@@ -20,6 +20,11 @@ public static class Suffixes
             "normalize" => "normalized",
             "mono" => "mono",
             "to-pdf" => null,
+            "square" => "square",
+            "flip" => "flipped",
+            "grey" => "grey",
+            "watermark" => "watermarked",
+            "flatten" => "flattened",
             "merge" or "split" => null,
             _ => verb,
         };

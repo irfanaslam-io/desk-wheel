@@ -206,7 +206,7 @@ internal static class EditorRenderer
     }
 
     /// <summary>A bold typeface with the text's script: the default one, or a font that has Arabic letters.</summary>
-    private static SKTypeface TypefaceFor(string text)
+    internal static SKTypeface TypefaceFor(string text)
     {
         foreach (var c in text)
         {
@@ -222,7 +222,7 @@ internal static class EditorRenderer
     /// Draws text through HarfBuzz, which joins Arabic letters and orders right-to-left runs.
     /// False when shaping isn't available, so the caller can draw it plainly.
     /// </summary>
-    private static bool TryDrawShaped(SKCanvas canvas, string line, float x, float y, SKTypeface typeface, float size,
+    internal static bool TryDrawShaped(SKCanvas canvas, string line, float x, float y, SKTypeface typeface, float size,
                                       SKColor edge, SKColor color, float edgeWidth)
     {
         try
@@ -249,8 +249,37 @@ internal static class EditorRenderer
             Style = SKPaintStyle.Stroke, StrokeWidth = edgeWidth, StrokeJoin = SKStrokeJoin.Round,
         };
         using var fill = new SKPaint { Typeface = typeface, TextSize = size, IsAntialias = true, Color = color, Style = SKPaintStyle.Fill };
-        SkiaSharp.HarfBuzz.CanvasExtensions.DrawShapedText(canvas, shaper, line, x, y, outline);
-        SkiaSharp.HarfBuzz.CanvasExtensions.DrawShapedText(canvas, shaper, line, x, y, fill);
+        // Each right-to-left or left-to-right run is shaped on its own, then placed left to right in screen order.
+        foreach (var run in Wheel.Core.Editing.BidiRuns.Visual(line))
+        {
+            if (edgeWidth > 0 && edge.Alpha > 0)
+                SkiaSharp.HarfBuzz.CanvasExtensions.DrawShapedText(canvas, shaper, run.Text, x, y, outline);
+            SkiaSharp.HarfBuzz.CanvasExtensions.DrawShapedText(canvas, shaper, run.Text, x, y, fill);
+            x += shaper.Shape(run.Text, fill).Width;
+        }
+    }
+
+    /// <summary>The width a line takes when drawn shaped (mixed Arabic and English included).</summary>
+    internal static float MeasureShaped(string line, SKTypeface typeface, float size)
+    {
+        try
+        {
+            return MeasureShapedCore(line, typeface, size);
+        }
+        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or TypeLoadException
+                                       or MissingMethodException or System.IO.FileNotFoundException)
+        {
+            using var paint = new SKPaint { Typeface = typeface, TextSize = size };
+            return paint.MeasureText(line);
+        }
+    }
+
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+    private static float MeasureShapedCore(string line, SKTypeface typeface, float size)
+    {
+        using var shaper = new SkiaSharp.HarfBuzz.SKShaper(typeface);
+        using var paint = new SKPaint { Typeface = typeface, TextSize = size };
+        return System.Linq.Enumerable.Sum(Wheel.Core.Editing.BidiRuns.Visual(line), run => shaper.Shape(run.Text, paint).Width);
     }
 
     /// <summary>Shrinks the region to coarse blocks and scales it back up with no smoothing: the original detail is gone.</summary>

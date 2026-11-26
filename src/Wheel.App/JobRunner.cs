@@ -64,8 +64,43 @@ internal sealed class JobRunner
 
             Wheel.Core.Files.ResizeSpec? size = null;
             string? password = null;
+            string? answerText = null;
             switch (option.Id)
             {
+                case "pdf.pages" or "pdf.delete":
+                {
+                    if (paths.Count != 1)
+                    {
+                        _notifier.Notify("One PDF at a time", "Select a single PDF to choose its pages.");
+                        return;
+                    }
+                    int count;
+                    try { count = await Task.Run(() => PdfConverter.CountPages(paths[0])); }
+                    catch (Exception ex) when (ex is IOException or InvalidDataException) { _notifier.Notify("Couldn't read the PDF", ex.Message, error: true); return; }
+                    var keep = option.Id == "pdf.pages";
+                    answerText = await PromptWindow.AskAsync(keep ? "Keep pages" : "Delete pages",
+                        keep ? $"{Describe(paths)} has {count} pages. Pages to keep, in the order you want them: 1-3, 7, 10-end. Backwards: end-1. Also: odd, even."
+                             : $"{Describe(paths)} has {count} pages. Pages to remove: 2, 5-7.",
+                        keep ? _lastPages : null, keep ? "1-3, 7" : "2, 5-7",
+                        check: t =>
+                        {
+                            var (pages, problem) = Wheel.Core.Pdf.PageSpec.Parse(t, count);
+                            if (problem is not null) return problem;
+                            return !keep && Wheel.Core.Pdf.PageSpec.Without(pages!, count).Count == 0 ? "That would remove every page." : null;
+                        });
+                    if (answerText is null) return;
+                    if (keep) _lastPages = answerText;
+                    break;
+                }
+                case "pdf.watermark" or "img.watermark":
+                    answerText = await PromptWindow.AskAsync("Watermark",
+                        option.Id == "pdf.watermark" ? $"Text across every page of {Describe(paths)}:" : $"Text for the corner of {Describe(paths)}:",
+                        option.Id == "pdf.watermark" ? _lastPdfMark ?? "CONFIDENTIAL" : _lastPictureMark ?? $"© {DateTime.Now.Year}", null,
+                        check: t => t.Trim().Length == 0 ? "Type the text." : t.Length > 60 ? "Keep it under 60 characters." : null);
+                    if (answerText is null) return;
+                    answerText = answerText.Trim();
+                    if (option.Id == "pdf.watermark") _lastPdfMark = answerText; else _lastPictureMark = answerText;
+                    break;
                 case "img.resize":
                     var answer = await PromptWindow.AskAsync("Resize", "New size: 1920x1080 (fits inside, keeps proportions), 1080 (width), x720 (height) or 25%.",
                         _lastSize, "1920x1080", check: t => Wheel.Core.Files.ResizeSpec.Parse(t) is null ? "Try 1920x1080, 1080, x720 or 50%." : null);
@@ -84,7 +119,7 @@ internal sealed class JobRunner
                     if (password is null) return;
                     break;
             }
-            if (size is not null || password is not null || option.Engine is EngineKind.PdfEdit or EngineKind.Vision)
+            if (size is not null || password is not null || answerText is not null || option.Engine is EngineKind.PdfEdit or EngineKind.Vision)
             {
                 _notifier.Notify("Working…", $"{option.Hint}: {Describe(paths)}");
                 var done = new List<JobResult>();
@@ -96,6 +131,13 @@ internal sealed class JobRunner
                         "pdf.compress" => await Task.Run(() => PdfTools.Compress(path, ImageEngine.ShrinkPdfPicture)),
                         "pdf.protect" => await Task.Run(() => PdfTools.Protect(path, password!)),
                         "pdf.unlock" => await Task.Run(() => PdfTools.Unlock(path, password!)),
+                        "pdf.pages" or "pdf.delete" => await Task.Run(() => KeepPages(path, option.Id == "pdf.pages", answerText!)),
+                        "pdf.watermark" => await Task.Run(() => PdfTools.Watermark(path, ImageEngine.WatermarkPicture(answerText!))),
+                        "pdf.images" => await Task.Run(() => PdfConverter.ExtractImages(path, ImageEngine.WriteRenderedPage)),
+                        "pdf.grey" => await ImageEngine.RebuildPdfAsync(path, grey: true),
+                        "pdf.flatten" => await ImageEngine.RebuildPdfAsync(path, grey: false),
+                        "pdf.clean" => await Task.Run(() => PdfTools.Clean(path)),
+                        "img.watermark" => await ImageEngine.WatermarkAsync(path, answerText!),
                         _ => JobResult.Fail($"No engine for {option.Id}"),
                     });
                 Remember(option, paths, done);
@@ -283,9 +325,31 @@ internal sealed class JobRunner
         }
     }
 
+    private string? _lastPages, _lastPdfMark, _lastPictureMark;
+
+    /// <summary>Pages… keeps the typed pages in that order; Delete… keeps all the others.</summary>
+    private static JobResult KeepPages(string path, bool keep, string typed)
+    {
+        try
+        {
+            var count = PdfConverter.CountPages(path);
+            var (pages, problem) = Wheel.Core.Pdf.PageSpec.Parse(typed, count);
+            if (problem is not null) return JobResult.Fail(problem);
+            var label = Wheel.Core.Pdf.PageSpec.Label(typed);
+            return keep
+                ? JobResult.Ok(PdfConverter.KeepPages(path, pages!, $"pages {label}"))
+                : JobResult.Ok(PdfConverter.KeepPages(path, Wheel.Core.Pdf.PageSpec.Without(pages!, count), $"without {label}"));
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException)
+        {
+            return JobResult.Fail($"{Path.GetFileName(path)}: {ex.Message}");
+        }
+    }
+
     private static Task<JobResult> Execute(WheelOption option, IReadOnlyList<string> paths) => option.Engine switch
     {
         EngineKind.Image when option.Id == "img.to-pdf" => ImageEngine.ImagesToPdfAsync(paths),
+        EngineKind.Image when option.Id is "img.row" or "img.column" or "img.grid" => ImageEngine.CombineAsync(paths, option.Id[4..]),
         EngineKind.Image => ImageEngine.RunAsync(option, paths[0]),
         EngineKind.Pdf => Task.Run(() => PdfConverter.Run(option, paths, ImageEngine.WriteRenderedPage)),
         EngineKind.Ffmpeg => FfmpegConverter.RunAsync(option, paths[0]),
@@ -359,6 +423,9 @@ internal sealed class JobRunner
                 break;
             case "act.copy-name":
                 _notifier.Notify("Copied", paths.Count == 1 ? "Name copied to the clipboard" : $"{paths.Count} names copied");
+                break;
+            case "act.base64":
+                _notifier.Notify("Copied", "The picture as a data URL (Base64): paste it into HTML, CSS or code");
                 break;
             case "act.copy-desktop":
                 _notifier.Notify("Copied to Desktop", Describe(paths), reveal: result.Outputs.FirstOrDefault());

@@ -106,6 +106,87 @@ public static class PdfTools
         }
     }
 
+    /// <summary>
+    /// "name (watermarked).pdf": <paramref name="png"/> (the watermark, already drawn with transparency by the app,
+    /// so any language works) across the middle of every page, corner to corner. Text stays selectable.
+    /// </summary>
+    public static JobResult Watermark(string input, byte[] png)
+    {
+        try
+        {
+            using var doc = Open(input, null);
+            using var stream = new MemoryStream(png);
+            using var image = PdfSharp.Drawing.XImage.FromStream(stream);
+            double aspect = (double)image.PixelHeight / image.PixelWidth;
+            foreach (var page in doc.Pages)
+            {
+                using var gfx = PdfSharp.Drawing.XGraphics.FromPdfPage(page, PdfSharp.Drawing.XGraphicsPdfPageOptions.Append);
+                double w = gfx.PageSize.Width, h = gfx.PageSize.Height;
+                var diagonal = Math.Sqrt(w * w + h * h);
+                var width = diagonal * 0.72;
+                var height = width * aspect;
+                if (height > Math.Min(w, h) * 0.5) { height = Math.Min(w, h) * 0.5; width = height / aspect; }
+                var angle = -Math.Atan2(h, w) * 180 / Math.PI;
+                gfx.RotateAtTransform(angle, new PdfSharp.Drawing.XPoint(w / 2, h / 2));
+                gfx.DrawImage(image, w / 2 - width / 2, h / 2 - height / 2, width, height);
+            }
+            var output = OutputPaths.Beside(input, ".pdf", "watermarked");
+            doc.Save(output);
+            return JobResult.Ok(output);
+        }
+        catch (PdfReaderException ex) when (ex.Message.Contains("password", StringComparison.OrdinalIgnoreCase))
+        {
+            return JobResult.Fail($"{Path.GetFileName(input)} has a password. Unlock it first.");
+        }
+        catch (Exception ex) when (ex is PdfReaderException or InvalidOperationException or IOException or NotSupportedException or ArgumentException)
+        {
+            return JobResult.Fail($"Couldn't add the watermark to {Path.GetFileName(input)}: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// "name (clean).pdf": the same pages without the hidden extras: author, title and other document details,
+    /// XMP metadata, scripts that run when it opens, and attached files.
+    /// </summary>
+    public static JobResult Clean(string input)
+    {
+        try
+        {
+            using var doc = Open(input, null);
+            var removed = new List<string>();
+            if (doc.Info.Elements.Count > 0) { doc.Info.Elements.Clear(); removed.Add("document details"); }
+            var catalog = doc.Internals.Catalog;
+            if (catalog.Elements.ContainsKey("/Metadata")) { catalog.Elements.Remove("/Metadata"); removed.Add("XMP metadata"); }
+            if (catalog.Elements.GetDictionary("/Names") is { } names)
+            {
+                if (names.Elements.ContainsKey("/JavaScript")) { names.Elements.Remove("/JavaScript"); removed.Add("scripts"); }
+                if (names.Elements.ContainsKey("/EmbeddedFiles")) { names.Elements.Remove("/EmbeddedFiles"); removed.Add("attached files"); }
+            }
+            if (catalog.Elements.GetDictionary("/OpenAction") is { } open && open.Elements.GetName("/S") == "/JavaScript")
+            {
+                catalog.Elements.Remove("/OpenAction");
+                if (!removed.Contains("scripts")) removed.Add("scripts");
+            }
+            foreach (var key in new[] { "/AA", "/PieceInfo" })
+                catalog.Elements.Remove(key);
+            foreach (var page in doc.Pages)
+                foreach (var key in new[] { "/AA", "/Metadata", "/PieceInfo" })
+                    page.Elements.Remove(key);
+
+            var output = OutputPaths.Beside(input, ".pdf", "clean");
+            doc.Save(output);
+            return JobResult.Ok(output);
+        }
+        catch (PdfReaderException ex) when (ex.Message.Contains("password", StringComparison.OrdinalIgnoreCase))
+        {
+            return JobResult.Fail($"{Path.GetFileName(input)} has a password. Unlock it first.");
+        }
+        catch (Exception ex) when (ex is PdfReaderException or InvalidOperationException or IOException or NotSupportedException)
+        {
+            return JobResult.Fail($"Couldn't clean {Path.GetFileName(input)}: {ex.Message}");
+        }
+    }
+
     private static PdfDocument Open(string input, string? password) =>
         password is null
             ? PdfReader.Open(input, PdfDocumentOpenMode.Modify)

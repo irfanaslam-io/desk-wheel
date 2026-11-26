@@ -49,6 +49,9 @@ internal static class ImageEngine
             if (option.Id == "img.icons")
                 return JobResult.Ok(await MakeIconSetAsync(bitmap, input, temp));
 
+            if (option.Id == "img.favicon")
+                return JobResult.Ok(MakeFavicons(bitmap, input));
+
             if (option.Id == "img.to-ico")
             {
                 var ico = OutputPaths.Beside(input, ".ico");
@@ -82,6 +85,24 @@ internal static class ImageEngine
                     Replace(ref bitmap, Orient(bitmap, SKEncodedOrigin.RightTop)); // 90° clockwise
                     extension = EncodableExtension(input);
                     break;
+                case "img.square":
+                {
+                    var side = Math.Min(bitmap.Width, bitmap.Height);
+                    var square = NewBitmap(side, side);
+                    using (var canvas = new SKCanvas(square))
+                        canvas.DrawBitmap(bitmap, new SKRect((bitmap.Width - side) / 2f, (bitmap.Height - side) / 2f, (bitmap.Width + side) / 2f, (bitmap.Height + side) / 2f), new SKRect(0, 0, side, side));
+                    Replace(ref bitmap, square);
+                    extension = EncodableExtension(input);
+                    break;
+                }
+                case "img.flip":
+                    Replace(ref bitmap, Orient(bitmap, SKEncodedOrigin.TopRight));
+                    extension = EncodableExtension(input);
+                    break;
+                case "img.grey":
+                    Replace(ref bitmap, Grey(bitmap));
+                    extension = EncodableExtension(input);
+                    break;
                 case "img.strip":
                     // Re-encoding from pixels writes no EXIF, GPS or XMP.
                     extension = EncodableExtension(input);
@@ -97,6 +118,278 @@ internal static class ImageEngine
             bitmap.Dispose();
         }
     }
+
+    // ---------- grey, watermark, combine, favicons ----------
+
+    private static SKBitmap Grey(SKBitmap src)
+    {
+        var dst = NewBitmap(src.Width, src.Height);
+        using var canvas = new SKCanvas(dst);
+        using var paint = new SKPaint
+        {
+            // Rec. 709 luminance: how bright each colour looks to people.
+            ColorFilter = SKColorFilter.CreateColorMatrix([
+                0.2126f, 0.7152f, 0.0722f, 0, 0,
+                0.2126f, 0.7152f, 0.0722f, 0, 0,
+                0.2126f, 0.7152f, 0.0722f, 0, 0,
+                0, 0, 0, 1, 0]),
+        };
+        canvas.Clear(SKColors.Transparent);
+        canvas.DrawBitmap(src, 0, 0, paint);
+        canvas.Flush();
+        return dst;
+    }
+
+    /// <summary>"photo (watermarked).jpg": the text in the bottom-right corner, white with a soft dark edge so it shows on any picture.</summary>
+    public static Task<JobResult> WatermarkAsync(string input, string text) => Task.Run(async () =>
+    {
+        var temp = Path.Combine(Path.GetTempPath(), "wheel-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(temp);
+        try
+        {
+            using var bitmap = await DecodeAsync(input, temp);
+            using var canvas = new SKCanvas(bitmap);
+            var typeface = EditorRenderer.TypefaceFor(text);
+            var size = (float)Math.Clamp(Math.Sqrt(bitmap.Width * (double)bitmap.Height) * 0.045, 12, 400);
+            var width = EditorRenderer.MeasureShaped(text, typeface, size);
+            var margin = size * 0.8f;
+            float x = bitmap.Width - width - margin, y = bitmap.Height - margin;
+            var edge = new SKColor(0, 0, 0, 120);
+            var fill = new SKColor(255, 255, 255, 215);
+            if (!EditorRenderer.TryDrawShaped(canvas, text, x, y, typeface, size, edge, fill, size / 9))
+            {
+                using var outline = new SKPaint { Typeface = typeface, TextSize = size, IsAntialias = true, Color = edge, Style = SKPaintStyle.Stroke, StrokeWidth = size / 9 };
+                using var paint = new SKPaint { Typeface = typeface, TextSize = size, IsAntialias = true, Color = fill };
+                canvas.DrawText(text, x, y, outline);
+                canvas.DrawText(text, x, y, paint);
+            }
+            canvas.Flush();
+            var output = OutputPaths.Beside(input, EncodableExtension(input), "watermarked");
+            await SaveAsync(bitmap, output, Math.Clamp(Quality, 50, 100), temp);
+            return JobResult.Ok(output);
+        }
+        catch (Exception ex) when (ex is IOException or NotSupportedException or InvalidOperationException or UnauthorizedAccessException or ArgumentException)
+        {
+            return JobResult.Fail(Friendly(ex, input));
+        }
+        finally
+        {
+            try { Directory.Delete(temp, recursive: true); } catch (IOException) { }
+        }
+    });
+
+    /// <summary>
+    /// For PDF watermarks: the text drawn once, large, grey and see-through, as PNG bytes (any language, Arabic joined
+    /// properly). PdfTools places it across each page.
+    /// </summary>
+    public static byte[] WatermarkPicture(string text)
+    {
+        var typeface = EditorRenderer.TypefaceFor(text);
+        const float size = 220;
+        var width = (int)Math.Ceiling(EditorRenderer.MeasureShaped(text, typeface, size) + size * 0.6f);
+        var height = (int)Math.Ceiling(size * 1.45f);
+        using var bitmap = NewBitmap(Math.Max(1, width), height);
+        using (var canvas = new SKCanvas(bitmap))
+        {
+            canvas.Clear(SKColors.Transparent);
+            var grey = new SKColor(120, 120, 120, 70);
+            if (!EditorRenderer.TryDrawShaped(canvas, text, size * 0.3f, size * 1.1f, typeface, size, SKColors.Transparent, grey, 0))
+            {
+                using var paint = new SKPaint { Typeface = typeface, TextSize = size, IsAntialias = true, Color = grey };
+                canvas.DrawText(text, size * 0.3f, size * 1.1f, paint);
+            }
+            canvas.Flush();
+        }
+        using var data = bitmap.Encode(SKEncodedImageFormat.Png, 100);
+        return data.ToArray();
+    }
+
+    /// <summary>
+    /// One picture from several: "row" (side by side, same height), "column" (stacked, same width) or "grid".
+    /// Saved as "Combined (row).jpg" beside the first; PNG when any picture has transparency.
+    /// </summary>
+    public static Task<JobResult> CombineAsync(IReadOnlyList<string> inputs, string layout) => Task.Run(async () =>
+    {
+        var temp = Path.Combine(Path.GetTempPath(), "wheel-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(temp);
+        var pictures = new List<SKBitmap>();
+        try
+        {
+            var ordered = inputs.OrderBy(Path.GetFileName, Wheel.Core.Files.NaturalComparer.Instance).ToList();
+            foreach (var input in ordered) pictures.Add(await DecodeAsync(input, temp));
+            const int MaxSide = 12000;
+            var gap = 0;
+            List<(SKBitmap Picture, SKRect Where)> placed = new();
+            int width, height;
+            switch (layout)
+            {
+                case "row":
+                {
+                    var h = Math.Min(pictures.Min(p => p.Height), 2400);
+                    float x = 0;
+                    foreach (var p in pictures) { var w = p.Width * (float)h / p.Height; placed.Add((p, SKRect.Create(x, 0, w, h))); x += w + gap; }
+                    (width, height) = ((int)Math.Ceiling(x - gap), h);
+                    break;
+                }
+                case "column":
+                {
+                    var w = Math.Min(pictures.Min(p => p.Width), 2400);
+                    float y = 0;
+                    foreach (var p in pictures) { var h = p.Height * (float)w / p.Width; placed.Add((p, SKRect.Create(0, y, w, h))); y += h + gap; }
+                    (width, height) = (w, (int)Math.Ceiling(y - gap));
+                    break;
+                }
+                default: // grid: near-square, every cell the same size, pictures fitted inside
+                {
+                    var columns = (int)Math.Ceiling(Math.Sqrt(pictures.Count));
+                    var rows = (int)Math.Ceiling(pictures.Count / (double)columns);
+                    var cell = Math.Min(1200, pictures.Min(p => Math.Max(p.Width, p.Height)));
+                    gap = Math.Max(4, cell / 60);
+                    for (var i = 0; i < pictures.Count; i++)
+                    {
+                        var p = pictures[i];
+                        var scale = Math.Min((float)cell / p.Width, (float)cell / p.Height);
+                        float w = p.Width * scale, h = p.Height * scale;
+                        float cx = (i % columns) * (cell + gap), cy = (i / columns) * (cell + gap);
+                        placed.Add((p, SKRect.Create(cx + (cell - w) / 2, cy + (cell - h) / 2, w, h)));
+                    }
+                    (width, height) = (columns * cell + (columns - 1) * gap, rows * cell + (rows - 1) * gap);
+                    break;
+                }
+            }
+            var shrink = Math.Min(1f, MaxSide / (float)Math.Max(width, height));
+            using var result = NewBitmap(Math.Max(1, (int)(width * shrink)), Math.Max(1, (int)(height * shrink)));
+            using (var canvas = new SKCanvas(result))
+            using (var paint = new SKPaint { FilterQuality = SKFilterQuality.High, IsAntialias = true })
+            {
+                canvas.Clear(layout == "grid" ? SKColors.White : SKColors.Transparent);
+                canvas.Scale(shrink);
+                foreach (var (picture, where) in placed) canvas.DrawBitmap(picture, where, paint);
+                canvas.Flush();
+            }
+            var transparent = pictures.Any(p => p.AlphaType != SKAlphaType.Opaque && Path.GetExtension(inputs[0]).ToLowerInvariant() is ".png" or ".webp" or ".gif");
+            var output = OutputPaths.Unique(Path.Combine(OutputPaths.FolderFor(ordered[0]), $"Combined ({layout}){(transparent ? ".png" : ".jpg")}"));
+            await SaveAsync(result, output, Math.Clamp(Quality, 50, 100), temp);
+            return JobResult.Ok(output);
+        }
+        catch (Exception ex) when (ex is IOException or NotSupportedException or InvalidOperationException or UnauthorizedAccessException or ArgumentException or OutOfMemoryException)
+        {
+            return JobResult.Fail(ex is OutOfMemoryException ? "The pictures are too big to combine." : ex.Message);
+        }
+        finally
+        {
+            foreach (var p in pictures) p.Dispose();
+            try { Directory.Delete(temp, recursive: true); } catch (IOException) { }
+        }
+    });
+
+    /// <summary>
+    /// "name (favicon)" folder for a website: favicon.ico (16, 32, 48), favicon-16x16.png, favicon-32x32.png,
+    /// apple-touch-icon.png (180, on white), android-chrome-192x192.png, android-chrome-512x512.png,
+    /// site.webmanifest, and favicon.html with the lines to paste into the page's &lt;head&gt;.
+    /// </summary>
+    private static string MakeFavicons(SKBitmap src, string input)
+    {
+        var folder = OutputPaths.Unique(Path.Combine(OutputPaths.FolderFor(input), OutputPaths.StemOf(input) + " (favicon)"));
+        Directory.CreateDirectory(folder);
+        void Png(int size, string name, bool onWhite = false)
+        {
+            using var icon = Square(src, size);
+            using var final = onWhite ? OnWhite(icon) : null;
+            Encode(final ?? icon, SKEncodedImageFormat.Png, 100, Path.Combine(folder, name));
+        }
+        Png(16, "favicon-16x16.png");
+        Png(32, "favicon-32x32.png");
+        Png(180, "apple-touch-icon.png", onWhite: true); // iOS shows transparency as black
+        Png(192, "android-chrome-192x192.png");
+        Png(512, "android-chrome-512x512.png");
+        WriteIcoSizes(src, Path.Combine(folder, "favicon.ico"), [16, 32, 48]);
+        File.WriteAllText(Path.Combine(folder, "site.webmanifest"), """
+            {
+              "icons": [
+                { "src": "/android-chrome-192x192.png", "sizes": "192x192", "type": "image/png" },
+                { "src": "/android-chrome-512x512.png", "sizes": "512x512", "type": "image/png" }
+              ]
+            }
+            """);
+        File.WriteAllText(Path.Combine(folder, "favicon.html"), """
+            <!-- Put the files in your website's top folder, then paste these lines into <head>: -->
+            <link rel="icon" href="/favicon.ico" sizes="any">
+            <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+            <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+            <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+            <link rel="manifest" href="/site.webmanifest">
+            """);
+        return folder;
+    }
+
+    /// <summary>An .ico holding several sizes (each a PNG), as browsers and Windows expect for favicons.</summary>
+    private static void WriteIcoSizes(SKBitmap src, string path, int[] sizes)
+    {
+        var images = sizes.Select(size =>
+        {
+            using var icon = Square(src, size);
+            using var data = icon.Encode(SKEncodedImageFormat.Png, 100);
+            return (size, bytes: data.ToArray());
+        }).ToList();
+        using var fs = new FileStream(path, FileMode.CreateNew, FileAccess.Write);
+        using var w = new BinaryWriter(fs);
+        w.Write((ushort)0);
+        w.Write((ushort)1);
+        w.Write((ushort)images.Count);
+        var offset = 6 + 16 * images.Count;
+        foreach (var (size, bytes) in images)
+        {
+            w.Write((byte)(size >= 256 ? 0 : size));
+            w.Write((byte)(size >= 256 ? 0 : size));
+            w.Write((byte)0);
+            w.Write((byte)0);
+            w.Write((ushort)1);
+            w.Write((ushort)32);
+            w.Write((uint)bytes.Length);
+            w.Write((uint)offset);
+            offset += bytes.Length;
+        }
+        foreach (var (_, bytes) in images) w.Write(bytes);
+    }
+
+    /// <summary>
+    /// PDF Grey and Flatten: every page rendered at 200 DPI and put back as a JPEG picture page of the same size.
+    /// Grey also turns it black and white. Forms, comments and text are locked in.
+    /// </summary>
+    public static Task<JobResult> RebuildPdfAsync(string input, bool grey) => Task.Run(() =>
+    {
+        var output = OutputPaths.Beside(input, ".pdf", grey ? "grey" : "flattened");
+        try
+        {
+            using (var stream = new FileStream(output, FileMode.CreateNew, FileAccess.Write))
+            using (var document = SKDocument.CreatePdf(stream))
+            {
+                PdfConverter.RenderEach(input, 200, (_, wPt, hPt, width, height, bgra, stride) =>
+                {
+                    using var page = new SKBitmap(new SKImageInfo(width, height, SKColorType.Bgra8888, SKAlphaType.Premul));
+                    var dst = page.GetPixels();
+                    for (var y = 0; y < height; y++)
+                        Marshal.Copy(bgra, y * stride, dst + y * page.RowBytes, width * 4);
+                    page.NotifyPixelsChanged();
+                    using var shown = grey ? Grey(page) : null;
+                    // Encoded as JPEG first: Skia's PDF writer then embeds the JPEG as it is (small files).
+                    using var jpeg = (shown ?? page).Encode(SKEncodedImageFormat.Jpeg, 82);
+                    using var image = SKImage.FromEncodedData(jpeg);
+                    var canvas = document.BeginPage(wPt, hPt);
+                    canvas.DrawImage(image, new SKRect(0, 0, wPt, hPt));
+                    document.EndPage();
+                });
+                document.Close();
+            }
+            return JobResult.Ok(output);
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or InvalidOperationException or UnauthorizedAccessException or DllNotFoundException)
+        {
+            try { File.Delete(output); } catch (IOException) { }
+            return JobResult.Fail($"Couldn't make the copy of {Path.GetFileName(input)}: {ex.Message}");
+        }
+    });
 
     private static void Replace(ref SKBitmap current, SKBitmap next)
     {

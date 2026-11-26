@@ -87,6 +87,24 @@ internal static class SelfTest
         Check("PDF → PNG pages", () => pdf is null ? "no PDF" : Produced(PdfConverter.Run(Opt("pdf.to-png"), [pdf], ImageEngine.WriteRenderedPage), "PNG"));
         Check("PDF rotate", () => pdf is null ? "no PDF" : Produced(PdfConverter.Run(Opt("pdf.rotate"), [pdf], ImageEngine.WriteRenderedPage), "PDF"));
 
+        // ---- picture tools ----
+        var png2 = Path.Combine(folder, "second.png");
+        File.Copy(png, png2, overwrite: true);
+        foreach (var id in new[] { "img.square", "img.flip", "img.grey", "img.favicon" })
+            Check($"picture {id}", () => Produced(Wait(ImageEngine.RunAsync(Opt(id), png)), "picture"));
+        Check("picture watermark (Arabic and English)", () => Produced(Wait(ImageEngine.WatermarkAsync(png, "© Desk Wheel · سري")), "picture"));
+        foreach (var layout in new[] { "row", "column", "grid" })
+            Check($"combine pictures: {layout}", () => Produced(Wait(ImageEngine.CombineAsync([png, png2], layout)), "picture"));
+        Check("picture as Base64", () => Wheel.Core.Files.DataUrl.For(png, File.ReadAllBytes(png)).StartsWith("data:image/png;base64,iVBOR") ? null : "wrong data URL");
+
+        // ---- more PDF tools ----
+        Check("PDF keep pages", () => pdf is null ? "no PDF" : PdfConverter.KeepPages(pdf, [0, 0], "pages 1, 1") is { } kept && PdfConverter.CountPages(kept) == 2 ? null : "wrong page count");
+        Check("PDF watermark", () => pdf is null ? "no PDF" : Produced(PdfTools.Watermark(pdf, ImageEngine.WatermarkPicture("CONFIDENTIAL سري")), "PDF"));
+        Check("PDF pictures out", () => pdf is null ? "no PDF" : Produced(PdfConverter.ExtractImages(pdf, ImageEngine.WriteRenderedPage), "pictures"));
+        Check("PDF grey copy", () => pdf is null ? "no PDF" : Produced(Wait(ImageEngine.RebuildPdfAsync(pdf, grey: true)), "PDF"));
+        Check("PDF flatten", () => pdf is null ? "no PDF" : Produced(Wait(ImageEngine.RebuildPdfAsync(pdf, grey: false)), "PDF"));
+        Check("PDF clean", () => pdf is null ? "no PDF" : Produced(PdfTools.Clean(pdf), "PDF"));
+
         // ---- video and audio ----
         var video = Path.Combine(folder, "sample.mkv");
         Check("make a test video", () =>

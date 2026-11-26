@@ -43,8 +43,9 @@ Drag a file onto the orange button at the edge of your screen and drop it on wha
 - **Text from anything on screen (OCR):** drag over a video, an image or a locked PDF and its text is copied, in English and Arabic.
 - **Clipboard history:** everything you copied, searchable, with pins. Copies that password managers mark as private are never kept.
 - **Screen tools:** record part of the screen as MP4, pick any colour, read QR codes and barcodes, and make QR codes.
-- **PDF tools:** merge, split, rotate, page numbers, compress, and add or remove passwords (AES-256).
-- **File tools:** resize, compress, remove photo location data (EXIF), cut out backgrounds (Mac), app icon sets, bulk rename with undo, and ZIP.
+- **PDF tools:** merge, split, keep, reorder or delete pages, rotate, page numbers, watermark, compress, grey and flattened copies, pull out the pictures, remove hidden details, and add or remove passwords (AES-256).
+- **Picture tools:** resize, compress, square crop, flip, black and white, watermark (Arabic too), combine into a row, column or grid, remove photo location data (EXIF), cut out backgrounds (Mac), app icon and website favicon sets, and copy as Base64.
+- **File tools:** bulk rename with undo, and ZIP.
 - **Watched folders:** files arriving in a folder are converted automatically, for example every image to WebP.
 - **Picture viewer:** Next and Back through every picture in a folder with the arrow keys, zoom, full screen, and *Open with › Desk Wheel* in File Explorer.
 - **Markdown and JSON readers:** `.md` files as a clean, GitHub-style page; `.json` files as a coloured, foldable, searchable tree, plus Format, Minify and JSON → CSV.
@@ -95,8 +96,8 @@ The [user guide](docs/USER-GUIDE.md) covers every tool in detail.
 | --- | --- |
 | **Screenshot** | Area, Window, Full, Text, Clipboard, Record, Colour, then **More ›** for QR, Make QR, 5 s timer, Files, History and Settings |
 | **Convert** | Images: PNG, JPG, WebP, HEIC (Mac), AVIF, ICO, TIFF, GIF, BMP · PDF → PNG, JPG, TXT · Video: MP4, WebM, MKV, MOV, GIF, MP3, M4A · Audio: MP3, M4A, WAV, FLAC, OGG, Opus · Office: PDF, DOCX, XLSX, PPTX, CSV · ZIP ↔ TAR.GZ, Extract · SRT ↔ VTT · Markdown: Read, HTML · JSON: View, Format, Minify, CSV, HTML |
-| **Tools** | Images: Compress, Size…, Rotate, No EXIF, View, Edit, Text, Cut out, Icons, Images → PDF · PDF: Merge, Split, Rotate, Numbers, Compress, Lock, Unlock · Video: Compress, 50%, Mute, Frame · Audio: Normalize, Mono, Compress · Rename, ZIP |
-| **Actions** | Copy files, Copy image, Copy path, Copy name, Open terminal here, Reveal, Copy to Desktop |
+| **Tools** | Images: Compress, 50%, Size…, Rotate, No EXIF, View, Edit, Square, Flip, Grey, Watermark…, Text, Cut out, Icons, Favicon, PDF · several images: Row, Column, Grid · PDF: Merge, Pages…, Delete…, Rotate, Compress, Watermark…, Lock, Unlock, Split, Numbers, Images, Grey, Flatten, Clean · Video: Compress, 50%, Mute, Frame · Audio: Normalize, Mono, Compress · Rename, ZIP |
+| **Actions** | Copy files, Copy image, Copy path, Copy name, Open terminal here, Reveal, Copy to Desktop, Base64 (pictures) |
 
 Only the choices that fit the files you're dragging are shown. Wheels with more than eight choices have a **More ›** segment.
 

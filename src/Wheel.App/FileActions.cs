@@ -41,6 +41,15 @@ internal static class FileActions
                     var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
                     return JobResult.Ok(paths.Select(p => CopyInto(p, desktop)).ToArray());
 
+                case "act.base64":
+                {
+                    var info = new FileInfo(paths[0]);
+                    if (info.Length > 10 * 1024 * 1024)
+                        return JobResult.Fail("That picture is over 10 MB: too big to paste as text. Compress it first.");
+                    platform.CopyText(Wheel.Core.Files.DataUrl.For(paths[0], File.ReadAllBytes(paths[0])));
+                    return JobResult.Ok();
+                }
+
                 default:
                     return JobResult.Fail($"Unknown action {option.Id}");
             }

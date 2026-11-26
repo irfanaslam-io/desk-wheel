@@ -89,6 +89,24 @@ internal static class Pdfium
     // ---- fpdf_ppo.h / fpdf_edit.h / fpdf_save.h ----
     [DllImport(Lib)] public static extern IntPtr FPDF_CreateNewDocument();
     [DllImport(Lib)] public static extern int FPDF_ImportPages(IntPtr destDoc, IntPtr srcDoc, [MarshalAs(UnmanagedType.LPUTF8Str)] string? pageRange, int index);
+    [DllImport(Lib)] public static extern int FPDF_ImportPagesByIndex(IntPtr destDoc, IntPtr srcDoc, int[] pageIndices, CULong length, int index);
+    [DllImport(Lib)] public static extern int FPDF_GetPageSizeByIndexF(IntPtr document, int pageIndex, out FS_SIZEF size);
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct FS_SIZEF { public float Width; public float Height; }
+
+    // Page objects (for pulling pictures out of a PDF)
+    public const int FPDF_PAGEOBJ_IMAGE = 3;
+    public const int FPDF_PAGEOBJ_FORM = 5;
+    [DllImport(Lib)] public static extern int FPDFPage_CountObjects(IntPtr page);
+    [DllImport(Lib)] public static extern IntPtr FPDFPage_GetObject(IntPtr page, int index);
+    [DllImport(Lib)] public static extern int FPDFPageObj_GetType(IntPtr pageObject);
+    [DllImport(Lib)] public static extern int FPDFFormObj_CountObjects(IntPtr formObject);
+    [DllImport(Lib)] public static extern IntPtr FPDFFormObj_GetObject(IntPtr formObject, CULong index);
+    [DllImport(Lib)] public static extern IntPtr FPDFImageObj_GetBitmap(IntPtr imageObject);
+    [DllImport(Lib)] public static extern int FPDFBitmap_GetWidth(IntPtr bitmap);
+    [DllImport(Lib)] public static extern int FPDFBitmap_GetHeight(IntPtr bitmap);
+    [DllImport(Lib)] public static extern int FPDFBitmap_GetFormat(IntPtr bitmap); // 1 gray, 2 BGR, 3 BGRx, 4 BGRA
     [DllImport(Lib)] public static extern void FPDFPage_SetRotation(IntPtr page, int rotate);
     [DllImport(Lib)] public static extern int FPDFPage_GetRotation(IntPtr page);
     [DllImport(Lib)] public static extern int FPDF_SaveAsCopy(IntPtr document, IntPtr fileWrite, CULong flags);

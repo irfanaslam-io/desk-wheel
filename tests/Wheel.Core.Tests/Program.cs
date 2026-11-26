@@ -732,6 +732,37 @@ Test("32-bit BITFIELDS DIB skips the colour masks", () =>
 // ---------- PDF (PDFium) ----------
 
 // A tiny but valid PDF: one page per string, each showing that text in Helvetica.
+/// <summary>A plain RGB PNG of the given size (no graphics library needed).</summary>
+static byte[] MakePng(int width, int height)
+{
+    static uint Crc(byte[] data)
+    {
+        var c = 0xFFFFFFFFu;
+        foreach (var b in data) { c ^= b; for (var k = 0; k < 8; k++) c = (c & 1) != 0 ? 0xEDB88320u ^ (c >> 1) : c >> 1; }
+        return ~c;
+    }
+    static void Chunk(Stream o, string type, byte[] data)
+    {
+        var len = BitConverter.GetBytes(data.Length); Array.Reverse(len); o.Write(len);
+        var body = System.Text.Encoding.ASCII.GetBytes(type).Concat(data).ToArray(); o.Write(body);
+        var crc = BitConverter.GetBytes(Crc(body)); Array.Reverse(crc); o.Write(crc);
+    }
+    using var png = new MemoryStream();
+    png.Write([137, 80, 78, 71, 13, 10, 26, 10]);
+    var ihdr = new byte[13];
+    BitConverter.GetBytes(width).Reverse().ToArray().CopyTo(ihdr, 0);
+    BitConverter.GetBytes(height).Reverse().ToArray().CopyTo(ihdr, 4);
+    ihdr[8] = 8; ihdr[9] = 2; // 8-bit RGB
+    Chunk(png, "IHDR", ihdr);
+    using var raw = new MemoryStream();
+    for (var y = 0; y < height; y++) { raw.WriteByte(0); for (var x = 0; x < width; x++) raw.Write([(byte)(x * 255 / width), (byte)(y * 255 / height), 128]); }
+    using var z = new MemoryStream();
+    using (var zl = new System.IO.Compression.ZLibStream(z, System.IO.Compression.CompressionLevel.Optimal, leaveOpen: true)) zl.Write(raw.ToArray());
+    Chunk(png, "IDAT", z.ToArray());
+    Chunk(png, "IEND", []);
+    return png.ToArray();
+}
+
 static byte[] MakePdf(params string[] pageTexts)
 {
     var objects = new List<string> { "<< /Type /Catalog /Pages 2 0 R >>", "" };
@@ -850,6 +881,52 @@ else
             True(!none.Success && none.Error!.Contains("already as small"), "text-only PDF: " + none.Error);
             True(!File.Exists(Path.Combine(pdfDir, "text-only (compressed).pdf")), "nothing left behind");
         });
+
+    Test("Pages…: keep, reorder, backwards; Delete…: the rest stay in order", () =>
+    {
+        var src = Pdf("five.pdf", "PageOne", "PageTwo", "PageThree", "PageFour", "PageFive");
+        string Words(string pdf) => string.Join(" ", File.ReadAllText(PdfConverter.Run(Opt("pdf.to-txt"), [pdf]).Outputs[0]).Split((char[])['\n', '\r', ' ', '\f'], StringSplitOptions.RemoveEmptyEntries));
+        var (pages, _) = Wheel.Core.Pdf.PageSpec.Parse("3, 1-2, end", 5);
+        var kept = PdfConverter.KeepPages(src, pages!, "pages 3, 1-2, end");
+        Eq("PageThree PageOne PageTwo PageFive", Words(kept), "kept in typed order");
+        Eq("five (pages 3, 1-2, end).pdf", Path.GetFileName(kept), "name");
+        var (gone, _) = Wheel.Core.Pdf.PageSpec.Parse("2, 4-5", 5);
+        Eq("PageOne PageThree", Words(PdfConverter.KeepPages(src, Wheel.Core.Pdf.PageSpec.Without(gone!, 5), "without 2, 4-5")), "deleted");
+        var (back, _) = Wheel.Core.Pdf.PageSpec.Parse("end-1", 5);
+        Eq("4,3,2,1,0", string.Join(",", back!), "backwards");
+        Eq("0,2,4", string.Join(",", Wheel.Core.Pdf.PageSpec.Parse("odd", 5).Pages!), "odd");
+        True(Wheel.Core.Pdf.PageSpec.Parse("6", 5).Problem!.Contains("5 pages"), "out of range explained");
+        True(Wheel.Core.Pdf.PageSpec.Parse("abc", 5).Problem is not null, "nonsense refused");
+    });
+
+    Test("Watermark across every page; text stays selectable; Images pulls pictures out; Clean removes details", () =>
+    {
+        var src = Pdf("report.pdf", "Quarterly", "Numbers");
+        var mark = Wheel.Core.Converters.PdfTools.Watermark(src, MakePng(400, 100));
+        True(mark.Success, mark.Error ?? "");
+        Eq("report (watermarked).pdf", Path.GetFileName(mark.Outputs[0]), "name");
+        True(File.ReadAllText(PdfConverter.Run(Opt("pdf.to-txt"), [mark.Outputs[0]]).Outputs[0]).Contains("Quarterly"), "text still there");
+        Eq(2, PdfConverter.CountPages(mark.Outputs[0]), "pages");
+
+        var written = new List<(string, int, int)>();
+        var images = PdfConverter.ExtractImages(mark.Outputs[0], (path, w, h, bgra, stride) => { written.Add((Path.GetFileName(path), w, h)); File.WriteAllBytes(path, [1]); });
+        True(images.Success, images.Error ?? "");
+        Eq("image-001.png 400x100", string.Join(",", written.Select(x => $"{x.Item1} {x.Item2}x{x.Item3}")), "the shared picture saved once");
+        True(!PdfConverter.ExtractImages(src, (_, _, _, _, _) => { }).Success, "no pictures: explained");
+
+        var tagged = Path.Combine(pdfDir, "tagged.pdf");
+        using (var doc = new PdfSharp.Pdf.PdfDocument())
+        {
+            doc.Info.Author = "Secret Person";
+            doc.Info.Title = "Internal plan";
+            using (var g = PdfSharp.Drawing.XGraphics.FromPdfPage(doc.AddPage())) { }
+            doc.Save(tagged);
+        }
+        var clean = Wheel.Core.Converters.PdfTools.Clean(tagged);
+        True(clean.Success, clean.Error ?? "");
+        var bytes = System.Text.Encoding.Latin1.GetString(File.ReadAllBytes(clean.Outputs[0]));
+        True(!bytes.Contains("Secret Person") && !bytes.Contains("Internal plan"), "details removed");
+    });
 
     Test("scanned-PDF reading renders each page into a temporary folder", () =>
     {
@@ -1240,6 +1317,15 @@ Test("Viewer: a picture opens its folder in Explorer's order; folders and select
     var two = Wheel.Core.Files.ImageFolder.For([Path.Combine(dir, "photo 10.jpg"), Path.Combine(dir, "notes.txt"), Path.Combine(dir, "Photo 1.webp")]);
     Eq(2, two.Pictures.Count, "only the chosen pictures");
     True(OptionRegistry.GetOptions(WheelMode.Tools, [Path.Combine(dir, "photo 2.png")], new Capabilities(true, false, true, true, true, false, false, false, null, null)).Any(o => o.Id == "img.view"), "View on the Tools wheel");
+});
+
+Test("Mixed Arabic and English lines are split into runs in screen order", () =>
+{
+    string Show(string line) => string.Join(" | ", Wheel.Core.Editing.BidiRuns.Visual(line).Select(r => (r.RightToLeft ? "R:" : "L:") + r.Text));
+    Eq("L:© Desk Wheel ·  | R:سري", Show("© Desk Wheel · سري"), "English first (the space stays with the English)");
+    Eq("L:2026 | R:سري للغاية ", Show("سري للغاية 2026"), "Arabic first: runs reversed for screen order");
+    Eq("R:سري", Show("سري"), "Arabic only");
+    Eq("L:CONFIDENTIAL", Show("CONFIDENTIAL"), "English only");
 });
 
 var failed = 0;

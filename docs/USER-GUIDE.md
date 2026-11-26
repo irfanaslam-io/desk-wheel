@@ -150,6 +150,18 @@ In the editor, click **Beautify** (or press F) to put the screenshot on a colour
 | Size… | Tools (images) | Type 1920x1080 (fits inside, keeps proportions), 1080 (width), x720 (height) or 25% |
 | Cut out | Tools (images, Mac 14+) | Removes the background, keeps the subject, as PNG (Apple Vision) |
 | Icons | Tools (images) | App icon set: PNGs 16–1024 px, an ICO, and on Mac an ICNS |
+| Square, Flip, Grey | Tools (images) | Square crop from the middle (profile pictures), mirror left to right, black and white |
+| Watermark… | Tools (images) | Type a line (your name, © 2026, any language, Arabic included); it goes in the bottom-right corner, white with a soft edge so it shows on any picture. Works on many pictures at once |
+| Row, Column, Grid | Tools (2 or more images) | One picture from several: side by side, stacked, or a grid collage, in name order. Saved as `Combined (row).jpg` |
+| Favicon | Tools (images) | Website icons in a `name (favicon)` folder: favicon.ico (16, 32, 48), PNGs for Apple and Android, `site.webmanifest`, and `favicon.html` with the lines to paste into your page |
+| Base64 | Actions (one image) | Copies the picture as a data URL (`data:image/png;base64,…`) for HTML, CSS or code |
+| Pages… | Tools (PDF) | Keep the pages you type, in that order: `1-3, 7`, `10-end`, `end-1` (backwards), `odd`, `even`. Extracts, reorders or reverses |
+| Delete… | Tools (PDF) | Remove the pages you type: `2, 5-7` |
+| Watermark… | Tools (PDF) | Your text (CONFIDENTIAL, DRAFT, any language) in light grey across the middle of every page; the PDF's own text stays selectable |
+| Images | Tools (PDF) | Saves every picture inside the PDF as PNG in a `name (images)` folder (each picture once) |
+| Grey | Tools (PDF) | A black-and-white copy for printing. Pages become pictures (200 DPI) |
+| Flatten | Tools (PDF) | Locks in form entries and comments: pages become pictures that can't be edited (200 DPI) |
+| Clean | Tools (PDF) | Removes hidden details: author, title and other document details, XMP metadata, scripts and attached files. Pages are unchanged |
 | Numbers | Tools (PDF) | Page numbers "1 / 12" at the bottom of every page |
 | Compress | Tools (PDF) | Smaller PDF: pictures re-saved at print quality (about 150 DPI), text and drawings untouched |
 | Lock / Unlock | Tools (PDF) | Add or remove a password, AES-256 |

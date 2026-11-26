@@ -547,6 +547,13 @@ internal sealed class WheelWindow : Window
         var pinned = option.Engine != EngineKind.Navigation && Pinned().Contains(option.Id);
         var label = Text(pinned ? "★ " + option.Label : option.Label, 15, FontWeight.SemiBold, TextMain);
         label.Measure(Size.Infinity);
+        // Long labels ("Watermark…") shrink a little so they stay inside their segment.
+        const double room = 88;
+        if (label.DesiredSize.Width > room)
+        {
+            label.FontSize = Math.Max(11, 15 * room / label.DesiredSize.Width);
+            label.Measure(Size.Infinity);
+        }
         Place(label, mid.X - label.DesiredSize.Width / 2, mid.Y - label.DesiredSize.Height / 2);
     }
 

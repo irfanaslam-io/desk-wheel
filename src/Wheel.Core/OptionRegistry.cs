@@ -38,9 +38,17 @@ public static class OptionRegistry
             T("img.strip", "No EXIF", "Remove metadata (GPS, camera, dates)", EngineKind.Image),
             T("img.view", "View", "Picture viewer: Next and Back through the folder, zoom, full screen", EngineKind.Window, many: true),
             T("img.edit", "Edit", "Mark up: arrows, text, blur, redact, crop", EngineKind.Image),
+            T("img.square", "Square", "Crop to a square from the middle (profile pictures)", EngineKind.Image),
+            T("img.flip", "Flip", "Mirror left to right", EngineKind.Image),
+            T("img.grey", "Grey", "Black and white", EngineKind.Image),
+            T("img.watermark", "Watermark…", "Your name or text in the corner (type it)", EngineKind.Image, many: true),
+            T("img.row", "Row", "Join the pictures side by side into one", EngineKind.Image, many: true, min: 2),
+            T("img.column", "Column", "Stack the pictures into one, top to bottom", EngineKind.Image, many: true, min: 2),
+            T("img.grid", "Grid", "A grid collage of the pictures", EngineKind.Image, many: true, min: 2),
             T("img.ocr", "Text", "Copy the text in the image (English and Arabic)", EngineKind.Ocr),
             T("img.cutout", "Cut out", "Remove the background, keep the subject (PNG)", EngineKind.Vision, ".png"),
             T("img.icons", "Icons", "App icon set: PNGs from 16 to 1024 px, ICO and (Mac) ICNS", EngineKind.Image),
+            T("img.favicon", "Favicon", "Website icons: favicon.ico, Apple and Android sizes, and the HTML to add", EngineKind.Image),
             T("img.to-pdf", "PDF", "Combine the images into one PDF", EngineKind.Image, ".pdf", many: true),
         ],
         [FileKind.Pdf] =
@@ -49,12 +57,19 @@ public static class OptionRegistry
             C("pdf.to-jpg", "JPG", "Every page as JPG (300 DPI)", EngineKind.Pdf, ".jpg"),
             C("pdf.to-txt", "TXT", "Extract the text", EngineKind.Pdf, ".txt"),
             T("pdf.merge", "Merge", "Combine into one PDF (in name order)", EngineKind.Pdf, ".pdf", many: true, min: 2),
-            T("pdf.split", "Split", "One PDF per page", EngineKind.Pdf),
+            T("pdf.pages", "Pages…", "Keep or reorder pages: type 1-3, 7 or 10-end", EngineKind.PdfEdit, ".pdf"),
+            T("pdf.delete", "Delete…", "Remove pages: type 2, 5-7", EngineKind.PdfEdit, ".pdf"),
             T("pdf.rotate", "Rotate", "Rotate every page 90° clockwise", EngineKind.Pdf, ".pdf"),
-            T("pdf.numbers", "Numbers", "Add page numbers (1 / 12) at the bottom", EngineKind.Pdf, ".pdf"),
             T("pdf.compress", "Compress", "Make it smaller: pictures at print quality, text untouched", EngineKind.PdfEdit, ".pdf"),
+            T("pdf.watermark", "Watermark…", "Text such as CONFIDENTIAL or DRAFT across every page", EngineKind.PdfEdit, ".pdf"),
             T("pdf.protect", "Lock", "Add a password (AES-256)", EngineKind.PdfEdit, ".pdf"),
             T("pdf.unlock", "Unlock", "Remove the password (you'll need it)", EngineKind.PdfEdit, ".pdf"),
+            T("pdf.split", "Split", "One PDF per page", EngineKind.Pdf),
+            T("pdf.numbers", "Numbers", "Add page numbers (1 / 12) at the bottom", EngineKind.Pdf, ".pdf"),
+            T("pdf.images", "Images", "Save the pictures inside as PNG files", EngineKind.PdfEdit),
+            T("pdf.grey", "Grey", "Black-and-white copy for printing (pages become pictures)", EngineKind.PdfEdit, ".pdf"),
+            T("pdf.flatten", "Flatten", "Lock in forms and comments: pages become pictures that can't be edited", EngineKind.PdfEdit, ".pdf"),
+            T("pdf.clean", "Clean", "Remove hidden details: author, metadata, scripts, attached files", EngineKind.PdfEdit, ".pdf"),
         ],
         [FileKind.Video] =
         [
@@ -148,6 +163,7 @@ public static class OptionRegistry
         new("act.reveal", "Reveal", "Show the file in its folder", WheelMode.Actions, EngineKind.Action),
         new("act.copy-desktop", "Desktop", "Copy to the Desktop", WheelMode.Actions, EngineKind.Action, AcceptsMany: true),
         new("act.copy-name", "Name", "Copy file name(s) without folder", WheelMode.Actions, EngineKind.Action, AcceptsMany: true),
+        new("act.base64", "Base64", "Copy the picture as a data URL (data:image/…;base64), for HTML, CSS or code", WheelMode.Actions, EngineKind.Action),
     ];
 
     /// <summary>The Screenshot wheel: works with no files at all.</summary>
@@ -218,7 +234,7 @@ public static class OptionRegistry
 
         if (mode == WheelMode.Actions)
             return ActionOptions
-                .Where(o => o.Id != "act.copy-image" || (paths.Count == 1 && FileClassifier.Classify(paths[0]) == FileKind.Image))
+                .Where(o => o.Id is not ("act.copy-image" or "act.base64") || (paths.Count == 1 && FileClassifier.Classify(paths[0]) == FileKind.Image))
                 .ToList();
 
         var kinds = paths.Select(FileClassifier.Classify).Distinct().ToList();

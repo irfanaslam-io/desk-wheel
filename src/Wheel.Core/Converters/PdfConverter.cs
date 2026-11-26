@@ -317,6 +317,192 @@ public static class PdfConverter
         }
     }
 
+    /// <summary>How many pages the PDF has (for checking typed page numbers before anything is written).</summary>
+    public static int CountPages(string input)
+    {
+        lock (Sync)
+        {
+            EnsureInit();
+            using var doc = new Document(input);
+            return doc.PageCount;
+        }
+    }
+
+    /// <summary>
+    /// A new PDF with just <paramref name="pages"/> (0-based), in that order: extracting, reordering or deleting
+    /// pages. Saved as "name (<paramref name="suffix"/>).pdf"; the original is untouched.
+    /// </summary>
+    public static string KeepPages(string input, IReadOnlyList<int> pages, string suffix)
+    {
+        if (pages.Count == 0)
+            throw new InvalidDataException("That would leave no pages.");
+        lock (Sync)
+        {
+            EnsureInit();
+            using var src = new Document(input);
+            if (pages.Any(p => p < 0 || p >= src.PageCount))
+                throw new InvalidDataException($"This PDF has {src.PageCount} pages.");
+            var result = FPDF_CreateNewDocument();
+            try
+            {
+                if (FPDF_ImportPagesByIndex(result, src.Handle, pages.ToArray(), new CULong((uint)pages.Count), 0) == 0)
+                    throw new InvalidDataException("Couldn't copy the pages.");
+                var output = OutputPaths.Beside(input, ".pdf", suffix);
+                File.WriteAllBytes(output, Save(result));
+                return output;
+            }
+            finally
+            {
+                FPDF_CloseDocument(result);
+            }
+        }
+    }
+
+    /// <summary>
+    /// The pictures inside a PDF, each saved once as PNG (through <paramref name="write"/>) into a "name (images)"
+    /// folder: image-001.png… Tiny ones (bullets, lines) are skipped.
+    /// </summary>
+    public static JobResult ExtractImages(string input, ImageWriter write)
+    {
+        lock (Sync)
+        {
+            EnsureInit();
+            using var doc = new Document(input);
+            var folder = OutputPaths.Unique(Path.Combine(OutputPaths.FolderFor(input), OutputPaths.StemOf(input) + " (images)"));
+            var seen = new HashSet<string>();
+            var count = 0;
+
+            void Take(IntPtr obj)
+            {
+                var bitmap = FPDFImageObj_GetBitmap(obj);
+                if (bitmap == IntPtr.Zero) return;
+                try
+                {
+                    int w = FPDFBitmap_GetWidth(bitmap), h = FPDFBitmap_GetHeight(bitmap);
+                    if (w < 24 || h < 24) return;
+                    var stride = FPDFBitmap_GetStride(bitmap);
+                    var raw = new byte[stride * h];
+                    Marshal.Copy(FPDFBitmap_GetBuffer(bitmap), raw, 0, raw.Length);
+                    var bgra = ToBgra(raw, w, h, stride, FPDFBitmap_GetFormat(bitmap));
+                    if (bgra is null) return;
+                    if (!seen.Add(Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bgra)))) return; // shared pictures once
+                    Directory.CreateDirectory(folder);
+                    write(Path.Combine(folder, $"image-{++count:000}.png"), w, h, bgra, w * 4);
+                }
+                finally
+                {
+                    FPDFBitmap_Destroy(bitmap);
+                }
+            }
+
+            void Walk(IntPtr obj, int depth)
+            {
+                switch (FPDFPageObj_GetType(obj))
+                {
+                    case FPDF_PAGEOBJ_IMAGE:
+                        Take(obj);
+                        break;
+                    case FPDF_PAGEOBJ_FORM when depth < 6:
+                        var n = FPDFFormObj_CountObjects(obj);
+                        for (var i = 0; i < n; i++) Walk(FPDFFormObj_GetObject(obj, new CULong((uint)i)), depth + 1);
+                        break;
+                }
+            }
+
+            for (var p = 0; p < doc.PageCount; p++)
+            {
+                var page = FPDF_LoadPage(doc.Handle, p);
+                if (page == IntPtr.Zero) continue;
+                try
+                {
+                    var n = FPDFPage_CountObjects(page);
+                    for (var i = 0; i < n; i++) Walk(FPDFPage_GetObject(page, i), 0);
+                }
+                finally
+                {
+                    FPDF_ClosePage(page);
+                }
+            }
+            return count == 0 ? JobResult.Fail($"{Path.GetFileName(input)} has no pictures in it.") : JobResult.Ok(folder);
+        }
+    }
+
+    /// <summary>PDFium bitmap formats → 4 bytes a pixel, blue-green-red-alpha.</summary>
+    private static byte[]? ToBgra(byte[] raw, int w, int h, int stride, int format)
+    {
+        var bgra = new byte[w * h * 4];
+        for (var y = 0; y < h; y++)
+            for (var x = 0; x < w; x++)
+            {
+                var o = (y * w + x) * 4;
+                switch (format)
+                {
+                    case 1: // grey
+                        var g = raw[y * stride + x];
+                        bgra[o] = bgra[o + 1] = bgra[o + 2] = g;
+                        bgra[o + 3] = 255;
+                        break;
+                    case 2: // BGR
+                        var i3 = y * stride + x * 3;
+                        bgra[o] = raw[i3]; bgra[o + 1] = raw[i3 + 1]; bgra[o + 2] = raw[i3 + 2]; bgra[o + 3] = 255;
+                        break;
+                    case 3 or 4: // BGRx, BGRA
+                        var i4 = y * stride + x * 4;
+                        bgra[o] = raw[i4]; bgra[o + 1] = raw[i4 + 1]; bgra[o + 2] = raw[i4 + 2];
+                        bgra[o + 3] = format == 4 ? raw[i4 + 3] : (byte)255;
+                        break;
+                    default:
+                        return null;
+                }
+            }
+        return bgra;
+    }
+
+    /// <summary>
+    /// Renders each page in turn at <paramref name="dpi"/> and hands it over with its size in points, for
+    /// rebuilding the PDF from pictures (Grey and Flatten).
+    /// </summary>
+    public static void RenderEach(string input, int dpi, Action<int, float, float, int, int, byte[], int> page)
+    {
+        lock (Sync)
+        {
+            EnsureInit();
+            using var doc = new Document(input);
+            for (var i = 0; i < doc.PageCount; i++)
+            {
+                var handle = FPDF_LoadPage(doc.Handle, i);
+                if (handle == IntPtr.Zero) throw new InvalidDataException($"Page {i + 1} couldn't be read.");
+                try
+                {
+                    // Width and height as the page is shown (/Rotate already applied by PDFium).
+                    float wPt = FPDF_GetPageWidthF(handle), hPt = FPDF_GetPageHeightF(handle);
+                    var scale = dpi / 72.0;
+                    var shrink = Math.Min(1.0, MaxPixels / Math.Max(wPt * scale, hPt * scale));
+                    int width = Math.Max(1, (int)Math.Round(wPt * scale * shrink)), height = Math.Max(1, (int)Math.Round(hPt * scale * shrink));
+                    var bitmap = FPDFBitmap_Create(width, height, 1);
+                    if (bitmap == IntPtr.Zero) throw new IOException($"Not enough memory to render page {i + 1}.");
+                    try
+                    {
+                        FPDFBitmap_FillRect(bitmap, 0, 0, width, height, new CULong(0xFFFFFFFF));
+                        FPDF_RenderPageBitmap(bitmap, handle, 0, 0, width, height, 0, FPDF_ANNOT);
+                        var stride = FPDFBitmap_GetStride(bitmap);
+                        var pixels = new byte[stride * height];
+                        Marshal.Copy(FPDFBitmap_GetBuffer(bitmap), pixels, 0, pixels.Length);
+                        page(i, wPt, hPt, width, height, pixels, stride);
+                    }
+                    finally
+                    {
+                        FPDFBitmap_Destroy(bitmap);
+                    }
+                }
+                finally
+                {
+                    FPDF_ClosePage(handle);
+                }
+            }
+        }
+    }
+
     private static string PagesFolder(string input)
     {
         return OutputPaths.Unique(Path.Combine(OutputPaths.FolderFor(input), OutputPaths.StemOf(input) + " (pages)"));
