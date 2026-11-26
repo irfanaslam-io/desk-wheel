@@ -85,6 +85,9 @@ internal static class Pdfium
     [DllImport(Lib)] public static extern void FPDFText_ClosePage(IntPtr textPage);
     [DllImport(Lib)] public static extern int FPDFText_CountChars(IntPtr textPage);
     [DllImport(Lib)] public static extern int FPDFText_GetText(IntPtr textPage, int startIndex, int count, [Out] ushort[] result);
+    [DllImport(Lib)] public static extern int FPDFText_GetCharBox(IntPtr textPage, int index, out double left, out double right, out double bottom, out double top);
+    [DllImport(Lib)] public static extern int FPDF_PageToDevice(IntPtr page, int startX, int startY, int sizeX, int sizeY, int rotate,
+                                                               double pageX, double pageY, out int deviceX, out int deviceY);
 
     // ---- fpdf_ppo.h / fpdf_edit.h / fpdf_save.h ----
     [DllImport(Lib)] public static extern IntPtr FPDF_CreateNewDocument();
@@ -172,19 +175,19 @@ internal static class Pdfium
         private readonly IntPtr _data;
         public IntPtr Handle { get; }
 
-        public Document(string path)
+        public Document(string path, string? password = null)
         {
             var bytes = File.ReadAllBytes(path);
             _data = Marshal.AllocHGlobal(bytes.Length);
             Marshal.Copy(bytes, 0, _data, bytes.Length);
-            Handle = FPDF_LoadMemDocument64(_data, (nuint)bytes.Length, null);
+            Handle = FPDF_LoadMemDocument64(_data, (nuint)bytes.Length, password);
             if (Handle == IntPtr.Zero)
             {
                 var code = FPDF_GetLastError().Value;
                 Marshal.FreeHGlobal(_data);
                 throw new InvalidDataException(code switch
                 {
-                    4 => "This PDF is password-protected.",
+                    4 => password is null ? "This PDF is password-protected." : "That password isn't right.",
                     2 => "The PDF couldn't be found.",
                     3 => "This file isn't a valid PDF, or it's damaged.",
                     6 => "This PDF uses a security handler Desk Wheel doesn't support.",

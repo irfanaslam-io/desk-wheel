@@ -463,6 +463,30 @@ internal sealed class App : Application, INotifier, IScreenToolHost
 
     private PlayerWindow? _playerWindow;
 
+    /// <summary>The PDF viewer for one file (or empty, for Open…).</summary>
+    private async System.Threading.Tasks.Task OpenPdfAsync(string? path)
+    {
+        _wheel?.CloseWheel();
+        Usage.Screen("pdf-viewer");
+        var window = new PdfViewerWindow(_platform, files =>
+            OpenWheel(new WheelWindow(_platform, _caps, WheelMode.Tools, System.Linq.Enumerable.ToArray(files), clickMode: true), w => w.ShowAtCursor()));
+        _platform.BringToFront();
+        window.Show();
+        window.Activate();
+        if (path is not null) await window.OpenAsync(path);
+    }
+
+    /// <summary>The archive window (what's inside, extract all or some, drag out).</summary>
+    private void OpenArchive(string path)
+    {
+        _wheel?.CloseWheel();
+        Usage.Screen("archive");
+        var window = new ArchiveWindow(_platform, path);
+        _platform.BringToFront();
+        window.Show();
+        window.Activate();
+    }
+
     /// <summary>
     /// The media player for these files (one file: its whole folder as the playlist), or empty, ready for a drop.
     /// One player: files opened while it's open join its playlist. The first time, its engine is offered as a
@@ -744,6 +768,10 @@ internal sealed class App : Application, INotifier, IScreenToolHost
                 OpenViewer(paths);
             else if (option.Id is "vid.play" or "aud.play")
                 OpenPlayer(paths);
+            else if (option.Id == "pdf.open")
+                foreach (var pdf in paths.Take(5)) _ = OpenPdfAsync(pdf);
+            else if (option.Id == "arc.open")
+                foreach (var archive in paths.Take(5)) OpenArchive(archive);
             else if (option.Id == "act.disk")
                 OpenDisk(paths.Count == 1 && System.IO.Directory.Exists(paths[0]) ? paths[0] : System.IO.Path.GetDirectoryName(paths[0]));
             else

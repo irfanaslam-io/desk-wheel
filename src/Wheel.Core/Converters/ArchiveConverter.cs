@@ -21,6 +21,12 @@ public sealed class ArchivePasswordException(string message, bool wrong) : IOExc
 /// Extraction never trusts the paths inside an archive: every entry must land inside the target folder, links
 /// are skipped, and nothing existing is overwritten.
 /// </summary>
+/// <summary>A file inside an archive. <see cref="Size"/> is -1 when unknown (a plain .gz).</summary>
+public sealed record ArchiveItem(string Path, long Size, DateTime? Modified, bool Encrypted)
+{
+    public string Name => Path[(Path.LastIndexOf('/') + 1)..];
+}
+
 public static class ArchiveConverter
 {
     public static JobResult Run(WheelOption option, IReadOnlyList<string> inputs, string? password = null)
@@ -196,6 +202,82 @@ public static class ArchiveConverter
         return folder;
     }
 
+    /// <summary>
+    /// Extracts only the chosen files, and everything inside the chosen folders (entry paths as <see cref="List"/>
+    /// gives them), into <paramref name="folder"/>, keeping their folders. Returns the files written.
+    /// </summary>
+    public static IReadOnlyList<string> ExtractSome(string archive, IReadOnlyCollection<string> entries, string folder, string? password = null)
+    {
+        var wanted = entries.Select(e => e.Replace('\\', '/').Trim('/')).Where(e => e.Length > 0).ToHashSet(StringComparer.Ordinal);
+        bool Include(string name) => wanted.Contains(name) || wanted.Any(w => name.StartsWith(w + "/", StringComparison.Ordinal));
+        Directory.CreateDirectory(folder);
+        var before = Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories).ToHashSet();
+        if (IsSingleCompressedFile(archive))
+        {
+            var target = OutputPaths.Unique(Path.Combine(folder, Path.GetFileNameWithoutExtension(archive)));
+            using (var src = Decompressor(archive))
+            using (var dst = File.Create(target))
+                src.CopyTo(dst);
+        }
+        else
+        {
+            ExtractTo(archive, folder, password, Include);
+        }
+        return Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories).Where(f => !before.Contains(f)).ToList();
+    }
+
+    /// <summary>
+    /// What's inside: every file with its path ("folder/file.txt"), size and date, without extracting anything.
+    /// </summary>
+    /// <exception cref="ArchivePasswordException">The names themselves are protected (some 7z and RAR files).</exception>
+    public static List<ArchiveItem> List(string archive, string? password = null)
+    {
+        var items = new List<ArchiveItem>();
+        if (IsSingleCompressedFile(archive))
+        {
+            items.Add(new ArchiveItem(Path.GetFileNameWithoutExtension(archive), -1, File.GetLastWriteTime(archive), false));
+            return items;
+        }
+        if (IsIso(archive))
+        {
+            using var stream = File.OpenRead(archive);
+            using var reader = new DiscUtils.Iso9660.CDReader(stream, joliet: true);
+            foreach (var file in reader.GetFiles("", "*.*", SearchOption.AllDirectories))
+            {
+                var name = file.Replace('\\', '/').TrimStart('/');
+                var semicolon = name.LastIndexOf(';');
+                if (semicolon > 0) name = name[..semicolon];
+                items.Add(new ArchiveItem(name, reader.GetFileLength(file), reader.GetLastWriteTime(file), false));
+            }
+            return items;
+        }
+        if (CompressedTarStream(archive) is { } tarStream)
+        {
+            using (tarStream)
+            using (var reader = new TarReader(tarStream))
+                while (reader.GetNextEntry() is { } entry)
+                    if (entry.EntryType is TarEntryType.RegularFile or TarEntryType.V7RegularFile or TarEntryType.ContiguousFile)
+                        items.Add(new ArchiveItem(EntryName(entry.Name), entry.Length, entry.ModificationTime.LocalDateTime, false));
+            return items;
+        }
+        try
+        {
+            using var opened = ArchiveFactory.OpenArchive(archive, new ReaderOptions { Password = string.IsNullOrEmpty(password) ? null : password, LookForHeader = true });
+            foreach (var entry in opened.Entries)
+                if (!entry.IsDirectory && string.IsNullOrEmpty(entry.LinkTarget) && !string.IsNullOrEmpty(entry.Key))
+                    items.Add(new ArchiveItem(EntryName(entry.Key!), entry.Size, entry.LastModifiedTime, entry.IsEncrypted));
+        }
+        catch (Exception ex) when (IsPasswordProblem(ex) || (password is not null && ex is SharpCompress.Common.SharpCompressException or InvalidDataException))
+        {
+            throw new ArchivePasswordException(
+                password is null ? $"{Path.GetFileName(archive)} is protected with a password, even its file names." : "The password is wrong.",
+                wrong: password is not null);
+        }
+        return items;
+    }
+
+    private static string EntryName(string name) => name.Replace('\\', '/').TrimStart('/');
+
     [ThreadStatic] private static bool IsPasswordRun;
 
     /// <summary>Converts between formats by extracting to a temporary folder and packing again (ZIP or TAR.GZ).</summary>
@@ -236,17 +318,17 @@ public static class ArchiveConverter
 
     // ---------------------------------------------------------------- reading
 
-    private static void ExtractTo(string archive, string folder, string? password)
+    private static void ExtractTo(string archive, string folder, string? password, Func<string, bool>? include = null)
     {
         if (IsIso(archive))
         {
-            ExtractIso(archive, folder);
+            ExtractIso(archive, folder, include);
             return;
         }
         var root = Path.GetFullPath(folder);
         if (CompressedTarStream(archive) is { } tarStream)
         {
-            using (tarStream) ExtractTar(tarStream, root);
+            using (tarStream) ExtractTar(tarStream, root, include);
             return;
         }
 
@@ -254,7 +336,7 @@ public static class ArchiveConverter
         {
             // Password ZIPs (AES and the older ZipCrypto) are read with SharpZipLib, which handles every common
             // layout; SharpCompress rejects valid AES ZIPs that use data descriptors.
-            ExtractProtectedZip(archive, root, password);
+            ExtractProtectedZip(archive, root, password, include);
             return;
         }
 
@@ -272,7 +354,7 @@ public static class ArchiveConverter
                 using var reader = opened.ExtractAllEntries();
                 while (reader.MoveToNextEntry())
                 {
-                    if (Target(root, reader.Entry) is not { } target) continue;
+                    if (Target(root, reader.Entry, include) is not { } target) continue;
                     using (var output = File.Create(target)) reader.WriteEntryTo(output);
                     Stamp(target, reader.Entry.LastModifiedTime);
                 }
@@ -281,7 +363,7 @@ public static class ArchiveConverter
             {
                 foreach (var entry in opened.Entries)
                 {
-                    if (Target(root, entry) is not { } target) continue;
+                    if (Target(root, entry, include) is not { } target) continue;
                     using (var input = entry.OpenEntryStream())
                     using (var output = File.Create(target))
                         input.CopyTo(output);
@@ -305,14 +387,14 @@ public static class ArchiveConverter
         }
     }
 
-    private static void ExtractProtectedZip(string archive, string root, string password)
+    private static void ExtractProtectedZip(string archive, string root, string password, Func<string, bool>? include = null)
     {
         try
         {
             using var zip = new ICSharpCode.SharpZipLib.Zip.ZipFile(archive) { Password = password };
             foreach (ICSharpCode.SharpZipLib.Zip.ZipEntry entry in zip)
             {
-                if (!entry.IsFile) continue;
+                if (!entry.IsFile || (include is not null && !include(EntryName(entry.Name)))) continue;
                 var target = SafeTarget(root, entry.Name) ?? throw Unsafe(entry.Name);
                 Directory.CreateDirectory(Path.GetDirectoryName(target)!);
                 if (File.Exists(target)) target = OutputPaths.Unique(target);
@@ -334,9 +416,10 @@ public static class ArchiveConverter
     }
 
     /// <summary>Where an entry goes, folders made; null for folders, links and anything that would escape the root.</summary>
-    private static string? Target(string root, SharpCompress.Common.IEntry entry)
+    private static string? Target(string root, SharpCompress.Common.IEntry entry, Func<string, bool>? include = null)
     {
         if (entry.IsDirectory || !string.IsNullOrEmpty(entry.LinkTarget) || string.IsNullOrEmpty(entry.Key)) return null;
+        if (include is not null && !include(EntryName(entry.Key!))) return null;
         var target = SafeTarget(root, entry.Key!) ?? throw Unsafe(entry.Key!);
         Directory.CreateDirectory(Path.GetDirectoryName(target)!);
         return File.Exists(target) ? OutputPaths.Unique(target) : target;
@@ -379,12 +462,13 @@ public static class ArchiveConverter
     }
 
     /// <summary>A TAR stream, entry by entry, through the same path checks (links and devices skipped).</summary>
-    private static void ExtractTar(Stream stream, string root)
+    private static void ExtractTar(Stream stream, string root, Func<string, bool>? include = null)
     {
         using var reader = new TarReader(stream);
         while (reader.GetNextEntry() is { } entry)
         {
             if (entry.EntryType is not (TarEntryType.RegularFile or TarEntryType.V7RegularFile or TarEntryType.ContiguousFile)) continue;
+            if (include is not null && !include(EntryName(entry.Name))) continue;
             var target = SafeTarget(root, entry.Name) ?? throw Unsafe(entry.Name);
             Directory.CreateDirectory(Path.GetDirectoryName(target)!);
             if (File.Exists(target)) target = OutputPaths.Unique(target);
@@ -408,7 +492,7 @@ public static class ArchiveConverter
         return full.StartsWith(prefix, OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal) ? full : null;
     }
 
-    private static void ExtractIso(string iso, string folder)
+    private static void ExtractIso(string iso, string folder, Func<string, bool>? include = null)
     {
         using var stream = File.OpenRead(iso);
         using var reader = new DiscUtils.Iso9660.CDReader(stream, joliet: true);
@@ -418,6 +502,7 @@ public static class ArchiveConverter
             var name = file.Replace('\\', '/').TrimStart('/');
             var semicolon = name.LastIndexOf(';'); // ISO 9660 version numbers: "README.TXT;1"
             if (semicolon > 0) name = name[..semicolon];
+            if (include is not null && !include(name)) continue;
             var target = SafeTarget(root, name) ?? throw Unsafe(name);
             Directory.CreateDirectory(Path.GetDirectoryName(target)!);
             using var src = reader.OpenFile(file, FileMode.Open, FileAccess.Read);

@@ -1963,6 +1963,49 @@ Test("Open comes first for files Desk Wheel can show, on Convert and Tools", () 
     Eq(WheelMode.Convert, OptionRegistry.GetOptions(WheelMode.Convert, ["a.mp4"], caps)[0].Mode, "takes the wheel's mode");
 });
 
+Test("archive window: list every format without extracting, then extract only what's chosen", () =>
+{
+    var A = typeof(Wheel.Core.Converters.ArchiveConverter);
+    foreach (var name in new[] { "sample.7z", "Rar5.rar", "Rar.rar", "sample.tar.xz", "sample.tar.bz2", "sample.iso", "hello.txt.gz", "aes-other-tool.zip" })
+    {
+        var items = Wheel.Core.Converters.ArchiveConverter.List(Fixture(name));
+        True(items.Count > 0 && items.All(i => !i.Path.StartsWith('/') && !i.Path.Contains('\\')), $"{name}: {string.Join(", ", items.Select(i => i.Path))}");
+    }
+    Eq("hello.txt", Wheel.Core.Converters.ArchiveConverter.List(Fixture("hello.txt.gz"))[0].Path, "a .gz is its one file");
+    True(Wheel.Core.Converters.ArchiveConverter.List(Fixture("aes-other-tool.zip")).All(i => i.Encrypted), "encrypted files are marked");
+    try { Wheel.Core.Converters.ArchiveConverter.List(Fixture("encrypted-names.7z")); True(false, "names need the password"); }
+    catch (Wheel.Core.Converters.ArchivePasswordException ex) { True(!ex.Wrong, "asks for it"); }
+    True(Wheel.Core.Converters.ArchiveConverter.List(Fixture("encrypted-names.7z"), "secret").Count > 0, "with the password");
+
+    // One file, and one folder with everything inside it.
+    var all = Wheel.Core.Converters.ArchiveConverter.List(Fixture("sample.7z"));
+    var one = all.First(i => i.Size > 0);
+    var target = Dir("extract-some");
+    var written = Wheel.Core.Converters.ArchiveConverter.ExtractSome(Fixture("sample.7z"), [one.Path], target);
+    Eq(1, written.Count, "only the chosen file");
+    Eq(one.Size, new FileInfo(written[0]).Length, "its size");
+    var withFolder = all.FirstOrDefault(i => i.Path.Contains('/'));
+    if (withFolder is not null)
+    {
+        var folder = withFolder.Path[..withFolder.Path.IndexOf('/')];
+        var inFolder = all.Count(i => i.Path.StartsWith(folder + "/"));
+        Eq(inFolder, Wheel.Core.Converters.ArchiveConverter.ExtractSome(Fixture("sample.7z"), [folder], Dir("extract-folder")).Count, "a folder brings its files");
+    }
+    Eq(1, Wheel.Core.Converters.ArchiveConverter.ExtractSome(Fixture("hello.txt.gz"), ["hello.txt"], Dir("extract-gz")).Count, ".gz");
+    var tar = Wheel.Core.Converters.ArchiveConverter.List(Fixture("sample.tar.xz"));
+    Eq(1, Wheel.Core.Converters.ArchiveConverter.ExtractSome(Fixture("sample.tar.xz"), [tar[0].Path], Dir("extract-tar")).Count, "tar.xz");
+    var iso = Wheel.Core.Converters.ArchiveConverter.List(Fixture("sample.iso"));
+    Eq(1, Wheel.Core.Converters.ArchiveConverter.ExtractSome(Fixture("sample.iso"), [iso[0].Path], Dir("extract-iso")).Count, "iso");
+    var protectedZip = Wheel.Core.Converters.ArchiveConverter.List(Fixture("aes-other-tool.zip"));
+    Eq(1, Wheel.Core.Converters.ArchiveConverter.ExtractSome(Fixture("aes-other-tool.zip"), [protectedZip[0].Path], Dir("extract-aes"), "secret").Count, "password ZIP");
+    try
+    {
+        Wheel.Core.Converters.ArchiveConverter.ExtractSome(Fixture("zip-slip.zip"), Wheel.Core.Converters.ArchiveConverter.List(Fixture("zip-slip.zip")).Select(i => i.Path).ToList(), Dir("extract-slip"));
+        True(false, "zip slip extracted");
+    }
+    catch (InvalidDataException) { }
+});
+
 var failed = 0;
 foreach (var (name, body) in tests)
 {
