@@ -72,5 +72,16 @@ public static partial class RecordingPlan
     ];
 
     /// <summary>"Screen Recording 2026-11-24 at 14.05.09.mp4".</summary>
+    /// <summary>
+    /// A recorded video → an animated GIF: 12 frames a second, at most 960 px wide, with a palette made for
+    /// this video (sharp text, few stray dots), looping.
+    /// </summary>
+    public static IReadOnlyList<string> GifArgs(string video, string gif) =>
+    [
+        "-hide_banner", "-nostdin", "-loglevel", "error", "-y", "-i", video,
+        "-vf", "fps=12,scale='min(960,iw)':-2:flags=lanczos,split[a][b];[a]palettegen=stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle",
+        "-loop", "0", gif,
+    ];
+
     public static string FileName(DateTime at) => $"Screen Recording {at:yyyy-MM-dd} at {at:HH.mm.ss}.mp4";
 }

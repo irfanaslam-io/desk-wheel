@@ -518,6 +518,10 @@ internal sealed class App : Application, INotifier, IScreenToolHost
             case "cap.full": _ = CaptureAsync(CaptureKind.FullScreen); break;
             case "cap.text": _ = CaptureTextAsync(); break;
             case "cap.delay": _ = CaptureAsync(CaptureKind.Area, 5); break;
+            case "cap.delay10": _ = CaptureAsync(CaptureKind.Area, 10); break;
+            case "cap.scroll": _ = Tools.ScrollCaptureAsync(AnyWindow()); break;
+            case "cap.ruler": _ = Tools.MeasureAsync(AnyWindow()); break;
+            case "cap.gif": _ = Tools.RecordAsync(AnyWindow(), gif: true); break;
             case "cap.selected": _ = OpenWheelForSelectionAsync(null); break;
             case "cap.settings": OpenSettings(); break;
             case "cap.history": OpenHistory(); break;

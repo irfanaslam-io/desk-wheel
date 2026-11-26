@@ -21,7 +21,7 @@ namespace Wheel.App;
 /// </summary>
 internal sealed class ScreenOverlayWindow : Window
 {
-    public enum Purpose { PickColor, SelectArea }
+    public enum Purpose { PickColor, SelectArea, Measure }
 
     private const int LoupeCells = 11, LoupeCell = 12; // 11×11 pixels, each shown 12×12
 
@@ -43,10 +43,13 @@ internal sealed class ScreenOverlayWindow : Window
     };
     private readonly Avalonia.Controls.Shapes.Path _dim = new() { Fill = new SolidColorBrush(Color.FromArgb(0x70, 0, 0, 0)) };
     private Point? _dragFrom;
+    private readonly Action<ScreenRect>? _measured;
 
-    private ScreenOverlayWindow(Purpose purpose, SKBitmap pixels, Bitmap picture, PixelRect screenBounds, double scaling)
+    private ScreenOverlayWindow(Purpose purpose, SKBitmap pixels, Bitmap picture, PixelRect screenBounds, double scaling,
+                                string? hint, Action<ScreenRect>? measured)
     {
         _purpose = purpose;
+        _measured = measured;
         _pixels = pixels;
         _picture = picture;
         _screenBounds = screenBounds;
@@ -65,14 +68,16 @@ internal sealed class ScreenOverlayWindow : Window
         _canvas.Children.Add(image);
         RenderOptions.SetBitmapInterpolationMode(_loupeImage, BitmapInterpolationMode.None);
 
-        if (purpose == Purpose.SelectArea)
+        if (purpose is Purpose.SelectArea or Purpose.Measure)
         {
             _dim.Data = new RectangleGeometry(new Rect(0, 0, Width, Height));
             _canvas.Children.Add(_dim);
             _canvas.Children.Add(_selection);
-            _sizeLabel.Child = new TextBlock { Foreground = Brushes.White, FontSize = 12 };
+            _sizeLabel.Child = new TextBlock { Foreground = Brushes.White, FontSize = purpose == Purpose.Measure ? 14 : 12 };
             _canvas.Children.Add(_sizeLabel);
-            _canvas.Children.Add(Hint("Drag over the area to record · Esc to cancel"));
+            _canvas.Children.Add(Hint(hint ?? (purpose == Purpose.Measure
+                ? "Drag over anything to measure it · the size is copied · Esc to close"
+                : "Drag over the area to record · Esc to cancel")));
         }
         else
         {
@@ -133,7 +138,8 @@ internal sealed class ScreenOverlayWindow : Window
             Padding = new Thickness(12, 6), IsHitTestVisible = false,
             Child = new TextBlock { Text = text, Foreground = Brushes.White, FontSize = 13 },
         };
-        Canvas.SetLeft(hint, Width / 2 - 170);
+        hint.Measure(Size.Infinity);
+        Canvas.SetLeft(hint, Math.Max(8, Width / 2 - hint.DesiredSize.Width / 2));
         Canvas.SetTop(hint, 40);
         return hint;
     }
@@ -143,16 +149,21 @@ internal sealed class ScreenOverlayWindow : Window
         await ShowAsync(Purpose.PickColor, screenshot, screenBounds, scaling) as SKColor?;
 
     /// <summary>An area of the screen under the pointer, in that screen's picture pixels. Null if cancelled.</summary>
-    public static async Task<ScreenRect?> SelectAreaAsync(string screenshot, PixelRect screenBounds, double scaling) =>
-        await ShowAsync(Purpose.SelectArea, screenshot, screenBounds, scaling) as ScreenRect?;
+    public static async Task<ScreenRect?> SelectAreaAsync(string screenshot, PixelRect screenBounds, double scaling, string? hint = null) =>
+        await ShowAsync(Purpose.SelectArea, screenshot, screenBounds, scaling, hint) as ScreenRect?;
 
-    private static async Task<object?> ShowAsync(Purpose purpose, string screenshot, PixelRect screenBounds, double scaling)
+    /// <summary>The ruler: each drag reports its size (in the screen picture's pixels); closes with Esc.</summary>
+    public static async Task MeasureAsync(string screenshot, PixelRect screenBounds, double scaling, Action<ScreenRect> measured) =>
+        await ShowAsync(Purpose.Measure, screenshot, screenBounds, scaling, null, measured);
+
+    private static async Task<object?> ShowAsync(Purpose purpose, string screenshot, PixelRect screenBounds, double scaling,
+                                                 string? hint = null, Action<ScreenRect>? measured = null)
     {
         var pixels = SKBitmap.Decode(screenshot) ?? throw new IOException("Couldn't read the screen picture.");
         Bitmap picture;
         using (var stream = File.OpenRead(screenshot))
             picture = new Bitmap(stream);
-        var window = new ScreenOverlayWindow(purpose, pixels, picture, screenBounds, scaling);
+        var window = new ScreenOverlayWindow(purpose, pixels, picture, screenBounds, scaling, hint, measured);
         window.Show();
         window.Activate();
         return await window._result.Task;
@@ -217,9 +228,21 @@ internal sealed class ScreenOverlayWindow : Window
             new RectangleGeometry(new Rect(0, 0, Width, Height)), new RectangleGeometry(r));
         var (x1, y1) = ToPixel(r.TopLeft);
         var (x2, y2) = ToPixel(r.BottomRight);
-        ((TextBlock)_sizeLabel.Child!).Text = $"{x2 - x1} × {y2 - y1}";
+        ((TextBlock)_sizeLabel.Child!).Text = SizeText(x2 - x1, y2 - y1);
         Canvas.SetLeft(_sizeLabel, r.X);
         Canvas.SetTop(_sizeLabel, r.Y > 28 ? r.Y - 26 : r.Bottom + 6);
+    }
+
+    /// <summary>"640 × 480"; the ruler adds "px", and on a high-resolution screen the size in points too.</summary>
+    private string SizeText(int w, int h)
+    {
+        if (_purpose != Purpose.Measure) return $"{w} × {h}";
+        var text = $"{w} × {h} px";
+        // Pictures of a high-resolution screen have more pixels than the screen has points (Retina: 2 per point).
+        var perPoint = _pixels.Width / Width;
+        if (perPoint > 1.05)
+            text += $"  ·  {Math.Round(w / perPoint)} × {Math.Round(h / perPoint)} pt";
+        return text;
     }
 
     private void OnPressed(object? sender, PointerPressedEventArgs e)
@@ -242,12 +265,22 @@ internal sealed class ScreenOverlayWindow : Window
 
     private void OnReleased(object? sender, PointerReleasedEventArgs e)
     {
-        if (_purpose != Purpose.SelectArea || _dragFrom is not { } from) return;
+        if (_purpose == Purpose.PickColor || _dragFrom is not { } from) return;
         _dragFrom = null;
         e.Pointer.Capture(null);
         var r = new Rect(from, e.GetPosition(_canvas)).Normalize();
         var (x1, y1) = ToPixel(r.TopLeft);
         var (x2, y2) = ToPixel(r.BottomRight);
+        if (_purpose == Purpose.Measure)
+        {
+            // A line is fine for a ruler (one side may be 0); a click with no drag measures nothing.
+            if (x2 - x1 >= 2 || y2 - y1 >= 2)
+            {
+                _measured?.Invoke(new ScreenRect(x1, y1, x2 - x1, y2 - y1));
+                ((TextBlock)_sizeLabel.Child!).Text = SizeText(x2 - x1, y2 - y1) + "  ·  copied";
+            }
+            return; // stays open for the next measurement
+        }
         if (x2 - x1 < 16 || y2 - y1 < 16)
         {
             _selection.IsVisible = _sizeLabel.IsVisible = false; // too small: probably a click; try again

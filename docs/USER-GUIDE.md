@@ -36,7 +36,7 @@ Everything Desk Wheel can do, and how. New here? Start with [Getting started](..
 | Window | ⌥⇧2 | Alt+Shift+2 |
 | Full screen (the one under the pointer) | ⌥⇧3 | Alt+Shift+3 |
 
-Easiest: **click the orange button**. The wheel opens on **Screenshot**: Area, Window, Full, Text, Clipboard, Record, Colour, then **More ›** for QR, Make QR, 5 s, Files, History and Settings. Wheels with more than eight choices have a **More ›** segment; while dragging a file, rest on it for a moment to turn the page. **Right-click any segment to pin it** to the front of its wheel (★); right-click again to unpin. **Click the centre** to step through Screenshot → Convert → Tools → Actions; dots under the name show where you are. Right-clicking the button captures an area straight away.
+Easiest: **click the orange button**. The wheel opens on **Screenshot**: Area, Window, Full, Scroll, Text, Clipboard, Record, then **More ›** for GIF, Colour, Ruler, QR, Make QR, 5 s, 10 s, Files, History and Settings. Wheels with more than eight choices have a **More ›** segment; while dragging a file, rest on it for a moment to turn the page. **Right-click any segment to pin it** to the front of its wheel (★); right-click again to unpin. **Click the centre** to step through Screenshot → Convert → Tools → Actions; dots under the name show where you are. Right-clicking the button captures an area straight away.
 
 - Screenshots are saved to **Pictures → Desk Wheel Screenshots** and copied to the clipboard.
 - A card appears bottom-left with **Copy**, **Edit**, **Text**, **Pin** (keeps it floating on top), **Desk Wheel** (convert it) and **Show**. You can also drag the thumbnail into any app.
@@ -67,6 +67,10 @@ Everything you copy (text, links, images, files) is remembered, so you can paste
 ## Screen tools
 
 - **Record:** drag over part of the screen; a small **● 0:12 Stop** bar appears beside it. Saved as MP4 in the screenshots folder (drop it on the button for GIF or a smaller MP4). Needs ffmpeg. Choose Record again, or the menu item, to stop. At most 15 minutes.
+- **GIF:** the same as Record, but saved as an animated GIF (12 frames a second, at most 960 px wide) for chats, tickets and docs.
+- **Scroll:** a scrolling screenshot. Drag over the part of the window that scrolls (a web page, a chat, a long document), then scroll down slowly with the mouse wheel or trackpad; the bar beside it shows how tall the picture is so far. Click **Done**: one tall picture opens on the screenshot card. Menus and banners that stay put while you scroll appear once. If you scroll too fast it says so: scroll back up a little and carry on.
+- **Ruler:** drag over anything on screen to measure it. The size (in pixels) is copied each time; on a Mac's Retina screen the size in points is shown too. Esc closes it.
+- **10 s:** like 5 s, with time to open a menu or hover over something first.
 - **Colour:** the screen freezes and a magnifier follows the pointer; click to copy the colour as HEX (the card also shows RGB and HSL).
 - **QR:** drag over a QR code or barcode anywhere on screen; what it says is copied. Links can be opened from the card.
 - **Make QR:** copy a link or some text, then choose Make QR: the code appears on the screenshot card, ready to copy, pin or drag out.
@@ -228,7 +232,7 @@ An optional "drag a file, tap ⇧" gesture can be turned on in the menu-bar menu
 
 | Desk Wheel | What's on it |
 | --- | --- |
-| Screenshot | Area, Window, Full, Text, 5 s, Files, History, Settings |
+| Screenshot | Area, Window, Full, Scroll, Text, Clipboard, Record, GIF, Colour, Ruler, QR, Make QR, 5 s, 10 s, Files, History, Settings |
 | Convert | Images: PNG, JPG, WebP, HEIC (Mac), AVIF, ICO, TIFF, GIF, BMP · PDF → PNG / JPG (every page) / TXT (scanned PDFs too) · Video: MP4, WebM, MKV, MOV, GIF, MP3, M4A · Audio: MP3, M4A, WAV, FLAC, OGG, Opus · ZIP ↔ TAR.GZ, Extract · SRT ↔ VTT, TXT · Office: PDF, DOCX, XLSX, PPTX, CSV… · Markdown: Read, HTML |
 | Tools | Images: Compress, 50%, Rotate, No EXIF, Edit, Text, Images → PDF · PDF: Merge, Pages…, Delete…, Rotate, Compress, Searchable, Watermark…, Lock, Unlock, Split, Numbers, Images, Grey, Flatten, Clean · Video: Trim…, Compress, 50%, Mute, Frame, Join, Speed…, Rotate, Flip, 720p, 1080p, Sheet · Video + SRT: Subtitles, Burn in · Audio: Trim…, Join, Speed…, Normalize, Mono, Compress · Markdown: Read · ZIP any selection |
 | Actions | Copy path, Open terminal here, Reveal, Copy to Desktop, Copy name |

@@ -3,6 +3,7 @@ using System.IO.Compression;
 using Wheel.Core;
 using Wheel.Core.Converters;
 using Wheel.Core.Ocr;
+using Wheel.Core.Screen;
 
 // Minimal test runner: each test is a named lambda; failures are collected and reported.
 var tests = new List<(string Name, Func<Task> Body)>();
@@ -123,8 +124,8 @@ Test("Text options show only when text recognition is available", () =>
     var ocr = caps with { HasOcr = true };
     True(!Ids(OptionRegistry.GetOptions(WheelMode.Capture, Array.Empty<string>(), caps)).Contains("cap.text"), "cap.text without OCR");
     True(Ids(OptionRegistry.GetOptions(WheelMode.Capture, Array.Empty<string>(), ocr)).Contains("cap.text"), "cap.text missing");
-    Eq(13, OptionRegistry.GetOptions(WheelMode.Capture, Array.Empty<string>(), ocr).Count, "capture count");
-    Eq("cap.area,cap.window,cap.full,cap.text,cap.clipboard,cap.record,cap.color,nav.more", string.Join(",", Ids(OptionRegistry.Page(OptionRegistry.GetOptions(WheelMode.Capture, Array.Empty<string>(), ocr), 0, WheelMode.Capture))), "first page of the Screenshot wheel");
+    Eq(17, OptionRegistry.GetOptions(WheelMode.Capture, Array.Empty<string>(), ocr).Count, "capture count");
+    Eq("cap.area,cap.window,cap.full,cap.scroll,cap.text,cap.clipboard,cap.record,nav.more", string.Join(",", Ids(OptionRegistry.Page(OptionRegistry.GetOptions(WheelMode.Capture, Array.Empty<string>(), ocr), 0, WheelMode.Capture))), "first page of the Screenshot wheel");
     var tools = Ids(OptionRegistry.GetOptions(WheelMode.Tools, ["a.png"], ocr));
     True(tools.Contains("img.ocr") && tools.Contains("any.zip"), "image Text tool or ZIP missing");
     True(!Ids(OptionRegistry.GetOptions(WheelMode.Tools, ["a.png"], caps)).Contains("img.ocr"), "img.ocr without OCR");
@@ -1713,6 +1714,80 @@ TestAsync("searchable PDF with Tesseract, when it's installed", async () =>
     File.WriteAllBytes(scan, MakePdf(""));
     var made = Wheel.Core.Pdf.SearchablePdf.Write(scan, PdfConverter.PlaceWords(scan, new Dictionary<int, IReadOnlyList<Wheel.Core.Ocr.OcrWord>> { [0] = words }));
     True(made.Success && File.ReadAllText(PdfConverter.ToText(made.Outputs[0])).Contains("Quarterly report 2026"), made.Error ?? "text missing");
+});
+
+// ---------------------------------------------------------------- scrolling screenshot
+
+Test("scrolling screenshot: stitched once, sticky header and footer kept once, too-fast scrolls skipped", () =>
+{
+    const int w = 200, view = 300, header = 40, footer = 30, pageHeight = 2000;
+    var rng = new Random(7);
+    var page = new byte[pageHeight][];
+    for (var y = 0; y < pageHeight; y++)
+    {
+        page[y] = new byte[w * 4];
+        var blank = y % 97 < 12; // stretches of empty background between paragraphs
+        for (var x = 0; x < w; x++)
+        {
+            var v = blank ? (byte)250 : (byte)rng.Next(0, 256);
+            page[y][x * 4] = v; page[y][x * 4 + 1] = v; page[y][x * 4 + 2] = (byte)(255 - v); page[y][x * 4 + 3] = 255;
+        }
+    }
+    byte[] Fixed(int seed) { var r = new Random(seed); var row = new byte[w * 4]; r.NextBytes(row); return row; }
+    var headerRows = Enumerable.Range(0, header).Select(i => Fixed(1000 + i)).ToArray();
+    var footerRows = Enumerable.Range(0, footer).Select(i => Fixed(2000 + i)).ToArray();
+    byte[] Frame(int scroll)
+    {
+        var f = new byte[w * 4 * view];
+        for (var i = 0; i < view; i++)
+        {
+            var row = i < header ? headerRows[i] : i >= view - footer ? footerRows[i - (view - footer)] : page[scroll + i];
+            Buffer.BlockCopy(row, 0, f, i * w * 4, w * 4);
+        }
+        return f;
+    }
+
+    var s = new ScrollStitcher(w, view);
+    Eq(ScrollStitcher.Step.First, s.Add(Frame(0)), "first");
+    Eq(ScrollStitcher.Step.Same, s.Add(Frame(0)), "not moved");
+    Eq(ScrollStitcher.Step.Added, s.Add(Frame(37)), "small scroll");
+    Eq(ScrollStitcher.Step.Added, s.Add(Frame(150)), "bigger scroll");
+    Eq(ScrollStitcher.Step.Lost, s.Add(Frame(600)), "scrolled further than the view: can't match");
+    Eq(ScrollStitcher.Step.Lost, s.Add(Frame(100)), "scrolled back up");
+    Eq(ScrollStitcher.Step.Added, s.Add(Frame(330)), "matching again from the last good picture");
+    Eq(ScrollStitcher.Step.Added, s.Add(Frame(500)), "and on");
+    var (bgra, width, height) = s.Compose();
+    Eq(w, width, "width");
+    // header + page rows from just under the header to the bottom of the last view + footer
+    var expected = headerRows.Concat(Enumerable.Range(header, 500 + view - footer - header).Select(y => page[y])).Concat(footerRows).ToArray();
+    Eq(expected.Length, height, "height");
+    for (var y = 0; y < height; y++)
+        True(bgra.AsSpan(y * w * 4, w * 4).SequenceEqual(expected[y]), $"row {y} differs");
+
+    var single = new ScrollStitcher(w, view);
+    single.Add(Frame(0));
+    Eq(view, single.Compose().Height, "one picture: the area as it was");
+    var capped = new ScrollStitcher(w, view, maxHeight: 400);
+    capped.Add(Frame(0));
+    Eq(ScrollStitcher.Step.Full, capped.Add(Frame(200)), "stops at the height limit");
+});
+
+TestAsync("screen recording → GIF recipe makes a looping GIF no wider than 960 px", async () =>
+{
+    if (FfmpegConverter.Locate() is not { } ffmpeg) { Console.WriteLine("        (no ffmpeg here: skipped)"); return; }
+    var dir = Dir("gif");
+    var video = Path.Combine(dir, "screen.mp4");
+    var made = await ProcessRunner.RunAsync(ffmpeg, ["-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi", "-i", "testsrc=duration=2:size=1280x720:rate=30", "-pix_fmt", "yuv420p", video]);
+    True(made.ExitCode == 0, made.ErrorTail);
+    var gif = Path.Combine(dir, "screen.gif");
+    var r = await ProcessRunner.RunAsync(ffmpeg, RecordingPlan.GifArgs(video, gif));
+    True(r.ExitCode == 0 && File.Exists(gif), r.ErrorTail);
+    var info = (await ProcessRunner.RunAsync(ffmpeg, ["-hide_banner", "-i", gif])).Error;
+    True(info.Contains("gif") && info.Contains("960x540"), info);
+    var small = Path.Combine(dir, "small.mp4");
+    await ProcessRunner.RunAsync(ffmpeg, ["-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi", "-i", "testsrc=duration=1:size=400x300:rate=30", "-pix_fmt", "yuv420p", small]);
+    await ProcessRunner.RunAsync(ffmpeg, RecordingPlan.GifArgs(small, Path.Combine(dir, "small.gif")));
+    True((await ProcessRunner.RunAsync(ffmpeg, ["-hide_banner", "-i", Path.Combine(dir, "small.gif")])).Error.Contains("400x300"), "small recordings keep their size");
 });
 
 var failed = 0;

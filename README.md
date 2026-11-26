@@ -74,7 +74,7 @@ Every release lists the SHA-256 of each file so you can check your download.
 
 1. **Install and open Desk Wheel.** An orange button appears at the right edge of your screen, and an orange ring in the menu bar (Mac) or system tray (Windows).
 2. **Drag a file onto the button.** The wheel opens around it. Keep dragging onto what you want, such as **JPG**, and let go. A card in the corner says when it's done; click it to show the result.
-3. **Or click the button.** The **Screenshot** wheel opens: Area, Window, Full, Text, Clipboard, Record, Colour and more. Click the **centre** to step through **Screenshot → Convert → Tools → Actions**; Convert, Tools and Actions work on the files selected in File Explorer or Finder.
+3. **Or click the button.** The **Screenshot** wheel opens: Area, Window, Full, Scroll (scrolling screenshot), Text, Clipboard, Record and more. Click the **centre** to step through **Screenshot → Convert → Tools → Actions**; Convert, Tools and Actions work on the files selected in File Explorer or Finder.
 4. **Select a folder** to work on every file inside it, for example all its photos to WebP.
 5. **Right-click a segment** to pin it to the front of its wheel, and **drag the button** to move it anywhere.
 
@@ -97,7 +97,7 @@ The [user guide](docs/USER-GUIDE.md) covers every tool in detail.
 
 | Wheel | What's on it |
 | --- | --- |
-| **Screenshot** | Area, Window, Full, Text, Clipboard, Record, Colour, then **More ›** for QR, Make QR, 5 s timer, Files, History and Settings |
+| **Screenshot** | Area, Window, Full, Scroll, Text, Clipboard, Record, then **More ›** for GIF, Colour, Ruler, QR, Make QR, 5 s and 10 s timers, Files, History and Settings |
 | **Convert** | Images: PNG, JPG, WebP, HEIC (Mac), AVIF, ICO, TIFF, GIF, BMP · PDF → PNG, JPG, TXT · Video: MP4, WebM, MKV, MOV, GIF, MP3, M4A · Audio: MP3, M4A, WAV, FLAC, OGG, Opus · Office: PDF, DOCX, XLSX, PPTX, CSV · RAR, 7z, ZIP, TAR.*, ISO → Extract, ZIP, TAR.GZ · CSV → JSON · SRT ↔ VTT · Markdown: Read, HTML · JSON: View, Format, Minify, CSV, HTML |
 | **Tools** | Images: Compress, 50%, Size…, Rotate, No EXIF, View, Edit, Square, Flip, Grey, Watermark…, Text, Cut out, Icons, Favicon, PDF · several images: Row, Column, Grid · PDF: Merge, Pages…, Delete…, Rotate, Compress, Searchable, Watermark…, Lock, Unlock, Split, Numbers, Images, Grey, Flatten, Clean · Video: Trim…, Compress, 50%, Mute, Frame, Join, Speed…, Rotate, Flip, 720p, 1080p, Sheet, Subtitles, Burn in · Audio: Trim…, Join, Speed…, Normalize, Mono, Compress · Rename, ZIP |
 | **Actions** | Copy files, Copy image, Copy path, Copy name, Open terminal here, Reveal, Copy to Desktop, Checksum, Base64 (pictures) |

@@ -93,6 +93,134 @@ internal sealed class ScreenTools
         }
     }
 
+    // ---------- ruler ----------
+
+    /// <summary>Drag over anything on screen to measure it; each size is copied. Esc closes.</summary>
+    public async Task MeasureAsync(Window anyWindow)
+    {
+        if (_busy) return;
+        _busy = true;
+        string? picture = null;
+        try
+        {
+            _host.HideChrome();
+            await Task.Delay(150);
+            if (await FreezeScreenAsync(anyWindow) is not { } frozen) return;
+            picture = frozen.Picture;
+            Platform.BringToFront();
+            ScreenRect? last = null;
+            await ScreenOverlayWindow.MeasureAsync(picture, frozen.Screen.Bounds, frozen.Screen.Scaling, r =>
+            {
+                last = r;
+                Platform.CopyText($"{r.Width} × {r.Height}");
+            });
+            if (last is { } m)
+                _host.Notify($"Copied {m.Width} × {m.Height}", "Pixels, as the screen shows them");
+        }
+        catch (Exception ex) when (ex is IOException or InvalidOperationException or UnauthorizedAccessException)
+        {
+            Log.Write(ex);
+            _host.Notify("Couldn't open the ruler", ex.Message, error: true);
+        }
+        finally
+        {
+            Delete(picture);
+            _host.RestoreChrome();
+            _busy = false;
+        }
+    }
+
+    // ---------- scrolling screenshot ----------
+
+    /// <summary>
+    /// Pick the part of a window that scrolls, then scroll down at your own pace: Desk Wheel keeps taking
+    /// pictures and joins them into one tall screenshot. Nothing is scrolled for you, so no extra permission.
+    /// </summary>
+    public async Task ScrollCaptureAsync(Window anyWindow)
+    {
+        if (_busy || _recording is not null) return;
+        _busy = true;
+        string? picture = null;
+        RecordingPill? pill = null;
+        var temp = Path.Combine(Path.GetTempPath(), $"wheel-scroll-{Guid.NewGuid():N}.png");
+        try
+        {
+            _host.HideChrome();
+            await Task.Delay(150);
+            if (await FreezeScreenAsync(anyWindow) is not { } frozen) return;
+            picture = frozen.Picture;
+            int fullWidth, fullHeight;
+            using (var codec = SKCodec.Create(picture) ?? throw new IOException("Couldn't read the screen picture."))
+                (fullWidth, fullHeight) = (codec.Info.Width, codec.Info.Height);
+            Platform.BringToFront();
+            if (await ScreenOverlayWindow.SelectAreaAsync(picture, frozen.Screen.Bounds, frozen.Screen.Scaling,
+                    "Drag over the part of the window that scrolls · Esc to cancel") is not { } area) return;
+
+            var stitcher = new ScrollStitcher(area.Width, area.Height);
+            var done = new TaskCompletionSource();
+            pill = new RecordingPill(() => done.TrySetResult(), "Done", "Scroll down slowly…");
+            pill.ShowBeside(frozen.Screen, area);
+            await Task.Delay(200); // the area picker is gone from the screen
+
+            var started = DateTime.UtcNow;
+            while (!done.Task.IsCompleted && DateTime.UtcNow - started < TimeSpan.FromMinutes(5))
+            {
+                var (ok, problem) = await Platform.CaptureAsync(CaptureKind.FullScreen, temp);
+                if (!ok)
+                {
+                    if (problem is not null) _host.Notify("Scrolling screenshot", problem, error: true);
+                    break;
+                }
+                var step = await Task.Run(() => Crop(temp, area, fullWidth, fullHeight) is { } bgra ? stitcher.Add(bgra) : (ScrollStitcher.Step?)null);
+                pill.SetStatus(step switch
+                {
+                    ScrollStitcher.Step.Lost => "Too fast: scroll back up a little",
+                    ScrollStitcher.Step.Full => "That's as tall as it goes",
+                    null => "Keep the pointer on this screen",
+                    _ => $"Scroll down slowly · {stitcher.Height:N0} px",
+                });
+                if (step == ScrollStitcher.Step.Full) break;
+                await Task.WhenAny(done.Task, Task.Delay(60));
+            }
+            pill.Close();
+            pill = null;
+            if (stitcher.Height == 0) return;
+
+            var (pixels, width, height) = await Task.Run(stitcher.Compose);
+            var path = CaptureNaming.NewPath(_host.CaptureFolder, DateTime.Now);
+            await Task.Run(() => ImageEngine.WriteRenderedPage(path, width, height, pixels, width * 4));
+            Log.Trace($"  Scrolling screenshot {width}×{height} → {path}");
+            _host.ShowPreview(path);
+        }
+        catch (Exception ex) when (ex is IOException or InvalidOperationException or UnauthorizedAccessException or ArgumentException)
+        {
+            Log.Write(ex);
+            _host.Notify("Couldn't take the scrolling screenshot", ex.Message, error: true);
+        }
+        finally
+        {
+            pill?.Close();
+            Delete(picture);
+            Delete(temp);
+            _host.RestoreChrome();
+            _busy = false;
+        }
+    }
+
+    /// <summary>The area from a full-screen picture, as BGRA rows. Null if the picture is of another screen.</summary>
+    private static byte[]? Crop(string png, ScreenRect area, int fullWidth, int fullHeight)
+    {
+        using var decoded = SKBitmap.Decode(png);
+        if (decoded is null || decoded.Width != fullWidth || decoded.Height != fullHeight) return null;
+        using var bgra = decoded.ColorType == SKColorType.Bgra8888 ? null : decoded.Copy(SKColorType.Bgra8888);
+        var source = bgra ?? decoded;
+        var result = new byte[area.Width * area.Height * 4];
+        var pixels = source.GetPixels();
+        for (var y = 0; y < area.Height; y++)
+            System.Runtime.InteropServices.Marshal.Copy(pixels + (area.Y + y) * source.RowBytes + area.X * 4, result, y * area.Width * 4, area.Width * 4);
+        return result;
+    }
+
     // ---------- QR codes ----------
 
     /// <summary>Drag over a QR code or barcode anywhere on screen: its text (or link) is copied.</summary>
@@ -190,7 +318,7 @@ internal sealed class ScreenTools
     // ---------- screen recording ----------
 
     /// <summary>Starts recording an area (or stops the recording in progress).</summary>
-    public async Task RecordAsync(Window anyWindow)
+    public async Task RecordAsync(Window anyWindow, bool gif = false)
     {
         if (_recording is not null)
         {
@@ -218,7 +346,12 @@ internal sealed class ScreenTools
             if (await ScreenOverlayWindow.SelectAreaAsync(picture, frozen.Screen.Bounds, frozen.Screen.Scaling) is not { } area) return;
 
             Directory.CreateDirectory(_host.CaptureFolder);
-            var output = OutputPaths.Unique(Path.Combine(_host.CaptureFolder, RecordingPlan.FileName(DateTime.Now)));
+            var now = DateTime.Now;
+            // A GIF is recorded as a video first (smooth, small), then turned into a GIF when it stops.
+            var output = gif
+                ? Path.Combine(Path.GetTempPath(), $"wheel-gif-{Guid.NewGuid():N}.mp4")
+                : OutputPaths.Unique(Path.Combine(_host.CaptureFolder, RecordingPlan.FileName(now)));
+            var gifOutput = gif ? OutputPaths.Unique(Path.Combine(_host.CaptureFolder, Path.ChangeExtension(RecordingPlan.FileName(now), ".gif"))) : null;
             System.Collections.Generic.IReadOnlyList<string> args;
             if (OperatingSystem.IsMacOS())
             {
@@ -238,6 +371,7 @@ internal sealed class ScreenTools
             }
 
             var recording = Recording.Start(ffmpeg, args, output);
+            recording.Gif = gifOutput;
             _recording = recording;
             var pill = new RecordingPill(() => _ = StopRecordingAsync());
             recording.Pill = pill;
@@ -279,6 +413,26 @@ internal sealed class ScreenTools
         recording.Pill?.Close();
         await recording.StopAsync();
         _host.RestoreChrome();
+        if (recording.Gif is { } gif && File.Exists(recording.Output) && new FileInfo(recording.Output).Length > 0)
+        {
+            _host.Notify("Making the GIF…", Path.GetFileName(gif));
+            var made = FfmpegConverter.Locate() is { } ffmpeg
+                ? await ProcessRunner.RunAsync(ffmpeg, RecordingPlan.GifArgs(recording.Output, gif))
+                : null;
+            Delete(recording.Output);
+            if (made is { ExitCode: 0 } && File.Exists(gif))
+            {
+                AppHistory.Record("Screenshot", gif, null, "Screen recording (GIF)");
+                _host.Notify("GIF saved · click to show", $"{Path.GetFileName(gif)} · {new FileInfo(gif).Length / 1024.0 / 1024.0:0.#} MB",
+                    onClick: () => Platform.Reveal(gif));
+            }
+            else
+            {
+                Delete(gif);
+                _host.Notify("Couldn't make the GIF", made?.ErrorTail.Trim() is { Length: > 0 } why ? why : "ffmpeg is missing.", error: true);
+            }
+            return;
+        }
         if (File.Exists(recording.Output) && new FileInfo(recording.Output).Length > 0)
         {
             AppHistory.Record("Screenshot", recording.Output, null, "Screen recording");
@@ -305,6 +459,7 @@ internal sealed class ScreenTools
         private readonly StringBuilder _errors = new();
 
         public string Output { get; }
+        public string? Gif { get; set; }
         public RecordingPill? Pill { get; set; }
         public Task Exited { get; }
         public string ErrorTail
@@ -376,9 +531,12 @@ internal sealed class RecordingPill : Window
     private readonly DispatcherTimer _tick = new() { Interval = TimeSpan.FromSeconds(1) };
     private readonly DateTime _started = DateTime.UtcNow;
     private readonly TextBlock _time = new() { Foreground = Brushes.White, FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center };
+    private readonly bool _status;
 
-    public RecordingPill(Action stop)
+    /// <summary>A recording timer with Stop, or (with <paramref name="status"/>) a status line and a button.</summary>
+    public RecordingPill(Action stop, string button = "Stop", string? status = null)
     {
+        _status = status is not null;
         SystemDecorations = SystemDecorations.None;
         Topmost = true;
         ShowInTaskbar = false;
@@ -389,8 +547,8 @@ internal sealed class RecordingPill : Window
 
         var stopButton = new Button
         {
-            Content = "Stop", Padding = new Thickness(12, 4), Foreground = Brushes.White,
-            Background = new SolidColorBrush(Color.FromRgb(0xE5, 0x38, 0x3B)),
+            Content = button, Padding = new Thickness(12, 4), Foreground = Brushes.White,
+            Background = new SolidColorBrush(_status ? Color.FromRgb(0x2F, 0x6F, 0xEB) : Color.FromRgb(0xE5, 0x38, 0x3B)),
         };
         stopButton.Click += (_, _) => stop();
         Content = new Border
@@ -402,13 +560,19 @@ internal sealed class RecordingPill : Window
                 Orientation = Orientation.Horizontal, Spacing = 10,
                 Children =
                 {
-                    new Avalonia.Controls.Shapes.Ellipse { Width = 10, Height = 10, Fill = new SolidColorBrush(Color.FromRgb(0xE5, 0x38, 0x3B)), VerticalAlignment = VerticalAlignment.Center },
+                    new Avalonia.Controls.Shapes.Ellipse { Width = 10, Height = 10, VerticalAlignment = VerticalAlignment.Center,
+                        Fill = new SolidColorBrush(_status ? Color.FromRgb(0x2F, 0x6F, 0xEB) : Color.FromRgb(0xE5, 0x38, 0x3B)) },
                     _time,
                     stopButton,
                 },
             },
         };
-        _time.Text = "0:00";
+        _time.Text = status ?? "0:00";
+        if (_status)
+        {
+            Closed += (_, _) => _tick.Stop();
+            return;
+        }
         _tick.Tick += (_, _) =>
         {
             var t = DateTime.UtcNow - _started;
@@ -417,6 +581,8 @@ internal sealed class RecordingPill : Window
         _tick.Start();
         Closed += (_, _) => _tick.Stop();
     }
+
+    public void SetStatus(string text) => _time.Text = text;
 
     /// <summary>Below the area if there's room, else above it, else in the screen's top corner.</summary>
     public void ShowBeside(Avalonia.Platform.Screen screen, ScreenRect area)
