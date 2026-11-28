@@ -21,7 +21,7 @@
     <PackageReference Include="SharpZipLib" Version="1.4.2" />
     <PackageReference Include="ZXing.Net" Version="0.16.11" />
     <!-- PDF passwords and compression, in-process (MIT): nothing extra to install. -->
-    <PackageReference Include="PDFsharp" Version="6.2.4" />
+    <PackageReference Include="PDFsharp" Version="6.5.0" />
     <!-- PDFsharp's signing dependency, pinned to the release with the security fix. -->
     <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.15" />
   </ItemGroup>
