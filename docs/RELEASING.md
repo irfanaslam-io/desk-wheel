@@ -52,7 +52,21 @@ export WHEEL_NOTARY_PROFILE=wheel-notary
 ./build-mac.sh --dmg        # → dist/DeskWheel-<version>.dmg, signed, notarized and stapled
 ```
 
-Without it, the DMG includes "First time opening Desk Wheel.txt" with the one-time steps. Note that each update replaces an ad-hoc-signed app, so macOS may ask again for Screen Recording or Input Monitoring after updating; a Developer ID signature avoids that.
+Without it, the DMG includes "First time opening Desk Wheel.txt" with the one-time steps.
+
+### Desk Wheel's own Mac signing identity (free)
+
+Release builds are signed with a self-signed certificate that stays the same in every version. Gatekeeper still asks once on the first install, but macOS recognises Desk Wheel across updates, so it keeps its permissions (Screen Recording, Accessibility, Input Monitoring) and in-app updates replace it without asking. An ad-hoc signature (used when the certificate is missing) changes with every build, so macOS treats each update as a new app.
+
+Set it up once:
+
+1. Run `scripts/make-mac-signing-cert.sh ~/deskwheel-signing` (Mac or Linux, needs OpenSSL).
+2. GitHub › desk-wheel › *Settings › Secrets and variables › Actions › New repository secret*:
+   - `MAC_SIGNING_P12`: the contents of `MAC_SIGNING_P12.txt`
+   - `MAC_SIGNING_PASSWORD`: the contents of `MAC_SIGNING_PASSWORD.txt`
+3. Keep `deskwheel-signing.p12` and its password in a password manager, then delete the folder. Never commit them.
+
+The Mac job loads it into a temporary keychain and prints the designated requirement (`certificate leaf = H"…"`) that macOS remembers permissions by. Keep using the same certificate (it's valid for 20 years): a new one resets permissions once. Without the secrets the job warns and falls back to ad hoc.
 
 ## Publishing an update (installs over the old version)
 

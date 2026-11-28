@@ -5,6 +5,7 @@ Everything Desk Wheel can do, and how. New here? Start with [Getting started](..
 ## Contents
 
 - [How to use](#how-to-use)
+- [Opening files](#opening-files)
 - [Screenshots](#screenshots)
 - [Clipboard history](#clipboard-history)
 - [Screen tools](#screen-tools)
@@ -17,6 +18,7 @@ Everything Desk Wheel can do, and how. New here? Start with [Getting started](..
 - [History](#history)
 - [Office files](#office-files)
 - [Settings](#settings)
+- [Updates](#updates)
 - [Known limits](#known-limits)
 - [Look and feel](#look-and-feel)
 
@@ -27,6 +29,30 @@ Everything Desk Wheel can do, and how. New here? Start with [Getting started](..
 3. **Click the wheel's centre** (or right-click anywhere on it) to go to the next wheel: Screenshot → Convert → Tools → Actions → Screenshot. Convert, Tools and Actions work on the files selected in Finder / Explorer. Esc or clicking outside the wheel closes it.
 4. **Select a folder** to work on the files inside it: a folder of photos gets the image conversions and tools for every photo in it (not sub-folders). ZIP and the actions use the folder itself.
 5. **Drag the button** to move it anywhere; the position is remembered.
+
+## Opening files
+
+Desk Wheel opens the files it works with, so you don't need a converter in the way:
+
+| File | Opens in | From the wheel |
+| --- | --- | --- |
+| Pictures (JPG, PNG, HEIC, WebP, GIF…) | the picture viewer | **View** |
+| Videos and music (MP4, MKV, MOV, MP3, FLAC…) | the player | **Play** |
+| PDF | the PDF viewer | **Open** |
+| ZIP, RAR, 7z, TAR, ISO… | the archive window | **Open** |
+| Markdown, JSON | the reader | **Read** / **View** |
+
+- **Drop a file on the button**: the first segment on the wheel is View, Play or Open. The conversions follow it.
+- **Double-click a file**, or right-click › **Open With › Desk Wheel**. To make Desk Wheel the default, use **Settings › General › Open files with Desk Wheel › Choose…**. On a Mac, tick the kinds of files and click **Use Desk Wheel for these**. On Windows, it opens Desk Wheel's page in *Settings › Apps › Default apps*: click **Set default** there (Windows lets only you change default apps). Desk Wheel offers this once after it's installed.
+- **The player on its own**: **Player** on the Screenshot wheel, or **Player…** in the tray menu. It opens empty: drop videos or music on it, paste copied files (⌘V / Ctrl+V), click **Open…**, or pick a recent file.
+
+### PDF viewer
+
+Pages scroll in one column, with thumbnails at the side (the button at the top left shows and hides them). Zoom with the buttons, **⌘/Ctrl + mouse wheel**, **⌘/Ctrl + / −**, or **Fit width** (**⌘/Ctrl 0**). **Find** (⌘F / Ctrl+F) highlights every match; Enter goes to the next. A scanned PDF has no words to find, so it suggests **Tools › Searchable** first. **Tools** opens the wheel's PDF tools for the file, **Print** opens it in Preview or Edge to print, and password-protected PDFs ask for the password.
+
+### Archive window
+
+Shows what's inside a ZIP, RAR, 7z, TAR (also .gz, .bz2, .xz), ISO or CBZ/CBR without extracting it. Double-click a folder to go in, Backspace to go back up. **Extract all** puts everything in a folder beside the archive, **Extract** takes only the selected items, and **Extract to…** lets you choose where. Double-click a file to open it, or drag files out onto the desktop or a folder. Encrypted archives ask for the password.
 
 ## Screenshots
 
@@ -75,7 +101,7 @@ Everything you copy (text, links, images, files) is remembered, so you can paste
 
 ### Media player
 
-Choose **Play** on the Tools wheel of a video or song (the first choice). One file plays with the rest of its folder as the playlist; several play in the order you chose them. Drop more files on the player to add them.
+Open a video or song with Desk Wheel (double-click it, or **Play**, the first choice on the wheel), or open the empty player from **Player** on the Screenshot wheel or the tray menu, then drop or paste files on it. There's one player window: files you open later join its playlist. One file plays with the rest of its folder as the playlist; several play in the order you chose them. Drop more files on the player to add them.
 
 The first time, Desk Wheel asks to download the player's engine: VLC by VideoLAN, free and open source, about 31 MB on a Mac and 43–48 MB on Windows, from Desk Wheel's own GitHub page. Each download is checked against a checksum built into Desk Wheel; anything else is thrown away. Not now? **Open in the system player** instead. Remove the engine any time in **Settings → Updates → Optional downloads**.
 
@@ -125,8 +151,8 @@ Engines:
 
 Desk Wheel has a picture viewer that steps through a whole folder:
 
-- **From the wheel:** select a picture, then **Tools → View**. Select a folder, or several pictures, to view just those.
-- **From File Explorer (Windows):** right-click a picture › **Open with › Desk Wheel**. To use it every time, choose Desk Wheel for pictures in *Settings › Apps › Default apps*.
+- **From the wheel:** drop a picture on the button and choose **View** (the first segment), or select it and choose **Tools → View**. Select a folder, or several pictures, to view just those.
+- **From Finder or File Explorer:** double-click a picture once Desk Wheel is the default, or right-click › **Open With › Desk Wheel**. See [Opening files](#opening-files).
 - **Next and Back:** the **→ / ←** keys (also Space, Page Up / Page Down, the mouse's back and forward buttons) or the round buttons at the sides. **Home / End** jump to the first or last picture. It goes round from the last picture to the first.
 - **Zoom:** the mouse wheel zooms where the pointer is; drag to move around; **double-click**, **0** (fit) and **1** (actual size) switch between the whole picture and 100 %. **+ / −** zoom too.
 - **F11** (or **F**) for full screen, **Esc** to leave it or close. **E** opens the picture in the editor, **Ctrl+C** copies it, and the folder button shows it in File Explorer or Finder.
@@ -252,7 +278,8 @@ Open **Settings…** from the menu-bar/tray menu, or from the **Settings** segme
 - **Screenshots:** folder, PNG or JPG, copy to clipboard, show the preview card, window shadow (Mac).
 - **Converted files:** beside the original, or into one folder you choose; JPG/WebP quality.
 - **Video and audio:** shows which ffmpeg is used; choose a specific one, or find it automatically.
-- **General:** on/off, floating button, start at login.
+- **General:** on/off, floating button, start at login, and **Open files with Desk Wheel** (default apps).
+- **Updates:** check now, install, automatic checks, and optional downloads (the player's engine).
 - **Advanced:** the drag + key gesture, and a button to open the settings/log folder.
 
 Desk Wheel needs no keyboard permission. The first time you use the button's click or the shortcut, macOS asks once whether Desk Wheel may control Finder; that's how it reads your selection.
@@ -263,12 +290,25 @@ An optional "drag a file, tap ⇧" gesture can be turned on in the menu-bar menu
 
 | Desk Wheel | What's on it |
 | --- | --- |
-| Screenshot | Area, Window, Full, Scroll, Text, Clipboard, Record, GIF, Colour, Ruler, QR, Make QR, 5 s, 10 s, Files, History, Disk, Settings |
+| Screenshot | (Update, when one is waiting) Area, Window, Full, Scroll, Text, Clipboard, Record, GIF, Colour, Ruler, QR, Make QR, 5 s, 10 s, Files, History, Player, Disk, Settings |
 | Convert | Images: PNG, JPG, WebP, HEIC (Mac), AVIF, ICO, TIFF, GIF, BMP · PDF → PNG / JPG (every page) / TXT (scanned PDFs too) · Video: MP4, WebM, MKV, MOV, GIF, MP3, M4A · Audio: MP3, M4A, WAV, FLAC, OGG, Opus · ZIP ↔ TAR.GZ, Extract · SRT ↔ VTT, TXT · Office: PDF, DOCX, XLSX, PPTX, CSV… · Markdown: Read, HTML |
 | Tools | Images: Compress, 50%, Rotate, No EXIF, Edit, Text, Images → PDF · PDF: Merge, Pages…, Delete…, Rotate, Compress, Searchable, Watermark…, Lock, Unlock, Split, Numbers, Images, Grey, Flatten, Clean · Video: Trim…, Compress, 50%, Mute, Frame, Join, Speed…, Rotate, Flip, 720p, 1080p, Sheet · Video + SRT: Subtitles, Burn in · Audio: Trim…, Join, Speed…, Normalize, Mono, Compress · Markdown: Read · ZIP any selection |
 | Actions | Copy path, Open terminal here, Reveal, Copy to Desktop, Copy name |
 
 With the optional keyboard gesture on, Shift / ⌘ (Ctrl) / ⌃ (Alt) also switch to Convert / Tools / Actions. Esc closes the wheel.
+
+## Updates
+
+Desk Wheel looks for a new version when it starts and every 6 hours (turn this off in **Settings › Updates**). When one is ready:
+
+- a card says so once; click it to update;
+- after that it stays visible: a **green dot** on the button, **Update** first on the Screenshot wheel, **Install update** in the tray menu, and in **Settings › Updates**.
+
+One click downloads it (the tray and Settings show how far it is), checks it against Desk Wheel's signature, installs it over the current version and opens it again. Your settings, history and clipboard are kept. Nothing is installed until you click.
+
+On a Mac, Desk Wheel is signed with the same certificate in every version, so macOS keeps its permissions (Screen Recording, Accessibility) and doesn't ask you to allow it again after an update. (The very first install still needs **Open Anyway** once, because Desk Wheel isn't in Apple's paid developer programme. Updating to 0.3.0 from an older version asks for permissions one last time.)
+
+The Microsoft Store version is updated by the Store.
 
 ## Known limits
 

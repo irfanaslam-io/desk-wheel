@@ -57,6 +57,8 @@ available to future device families* ticked.
 ```
 Desk Wheel puts the file tools you use every day one drag away. Drop a file on the orange button at the edge of your screen, a wheel of choices opens around it, and you let go on the one you want: JPG, PDF, MP4, Compress, Merge… The result is saved next to the original, which is never changed.
 
+It also opens your files: pictures in a viewer, videos and music in a player, PDFs in a PDF viewer, and ZIP, RAR and 7z archives in an archive window. Make it your default app for them, or right-click a file > Open with > Desk Wheel.
+
 Click the button instead for screenshots you can mark up on the spot, text copied from anything on the screen, a colour picker, screen recording and your clipboard history.
 
 Everything runs on your computer. No uploads, no account, no ads, no limits.
@@ -66,7 +68,8 @@ WHAT IT DOES
 • Video and audio: MP4, WebM, MKV, MOV, GIF, MP3, M4A, WAV, FLAC, OGG and Opus; trim, join, change speed, rotate, 720p and 1080p, compress, mute, thumbnail sheets, add or burn in subtitles.
 • Media player for every format, with subtitles, speed, equalizer, A-B repeat and playlists (its engine, VLC by VideoLAN, is an optional download, fetched only when you first play something and say yes).
 • PDF: pages to images or text, merge, split, rotate, page numbers, compress, watermark, add or remove a password, and make scanned PDFs searchable (English and Arabic).
-• Archives like WinRAR: open RAR, 7z, ISO, TAR, GZ, BZ2 and XZ, and make password-protected ZIPs.
+• Archives like WinRAR: browse RAR, 7z, ZIP, ISO and TAR files, extract all or just what you pick, drag files out, and make password-protected ZIPs.
+• PDF viewer with thumbnails, zoom, find and print.
 • Disk space: see what's taking up space in a list and ring chart, then open, ZIP or move things to the Recycle Bin.
 • Word, Excel and PowerPoint to PDF, using Microsoft Office or the free LibreOffice if you have one.
 • Screenshots: area, window or full screen, with pen, arrows, boxes, highlights, text, numbered steps, blur and redact, right where you captured.
@@ -87,7 +90,13 @@ Powered by irfanaslam.io · Support: hello@irfanaslam.io
 
 ### What's new in this version
 
-Leave empty for the first submission.
+```
+Version 0.3.0
+• Opens your files: pictures, videos, music, PDFs and archives open in Desk Wheel, with View, Play or Open first on the wheel.
+• New PDF viewer (thumbnails, zoom, find, print) and archive window (browse, extract, drag out).
+• The player opens on its own from the tray: drop or paste videos and music on it.
+• Choose Desk Wheel as the default app for pictures, videos, music, PDF, ZIP/RAR, Markdown and JSON.
+```
 
 ### Product features (one per box)
 
@@ -98,7 +107,9 @@ Screenshots of an area, a window or the full screen, marked up right where you c
 Arrows, boxes, text, numbered steps, highlight, blur and redact
 Copy text from anything on the screen (OCR)
 Clipboard history with search and pins
+Opens pictures, videos, music, PDFs and archives; set it as your default app
 Picture viewer with Next and Back through a folder
+PDF viewer with thumbnails, find and print
 PDF tools: merge, split, rotate, page numbers, compress and passwords
 Make scanned PDFs searchable (English and Arabic)
 Media player for every format (optional engine download)
@@ -182,10 +193,10 @@ How to test:
 1. First launch: a small window asks whether to send anonymous usage counts. Either answer works.
 2. Drag an image (for example a .jpg) from File Explorer onto the orange button. A wheel opens around it; release on "PNG". A card in the corner confirms, and the PNG is saved next to the original.
 3. Click the orange button: the Screenshot wheel opens. Click "Area", drag over part of the screen, then press Enter. The picture is saved to Pictures\Desk Wheel Screenshots and copied to the clipboard.
-4. Right-click a picture in File Explorer > Open with > Desk Wheel: the picture viewer opens; the Left and Right arrow keys move through the folder.
+4. Right-click a picture in File Explorer > Open with > Desk Wheel: the picture viewer opens; the Left and Right arrow keys move through the folder. The same works for a PDF (PDF viewer), a .zip (archive window) and a video (player). The package declares file type associations (windows.fileTypeAssociation) for pictures, videos, music, PDF, archives, Markdown and JSON; Desk Wheel never makes itself the default: its "Open files with Desk Wheel" window (also in Settings > General) only opens Windows Settings > Default apps for the user to choose.
 5. Right-click the tray icon for Settings, History and Quit.
 
-6. Optional add-on download (Store Policy 10.1.5): drag a video (for example an .mp4) onto the orange button, click the centre of the wheel until it says "Tools", and choose "Play". The first time, a window explains that the player needs its engine and asks; only after "Download and play" is clicked does Desk Wheel download it. The engine is LibVLC 3.0.24 by VideoLAN (LGPL), only libraries, no executables or installers, from this product's own GitHub releases page (github.com/irfanaslam-io/desk-wheel, release "packs-media-player-3.0.24-1"). Each file's size and SHA-256 are built into the app, and anything that doesn't match is deleted unused. It is stored in the app's local data folder and can be removed in Settings > Updates > Optional downloads. Everything else works without it ("Open in the system player" is offered instead).
+6. Optional add-on download (Store Policy 10.1.5): drag a video (for example an .mp4) onto the orange button and choose "Play" (the first segment), or choose "Player..." in the tray menu. The first time, a window explains that the player needs its engine and asks; only after "Download and play" is clicked does Desk Wheel download it. The engine is LibVLC 3.0.24 by VideoLAN (LGPL), only libraries, no executables or installers, from this product's own GitHub releases page (github.com/irfanaslam-io/desk-wheel, release "packs-media-player-3.0.24-1"). Each file's size and SHA-256 are built into the app, and anything that doesn't match is deleted unused. It is stored in the app's local data folder and can be removed in Settings > Updates > Optional downloads. Everything else works without it ("Open in the system player" is offered instead).
 
 No account, sign-in or internet connection is needed (except for the optional player download above). The Store version does not update itself; updates come from the Store. Word, Excel and PowerPoint to PDF needs Microsoft Office or LibreOffice installed; without either, those choices are not shown.
 ```

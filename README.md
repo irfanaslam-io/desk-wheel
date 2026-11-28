@@ -37,6 +37,7 @@ Drag a file onto the orange button at the edge of your screen and drop it on wha
 
 ## Features
 
+- **Opens your files:** pictures in the viewer, videos and music in the player, PDFs in a PDF viewer with find and thumbnails, ZIP / RAR / 7z in an archive window. Drop a file and **View**, **Play** or **Open** comes first; double-click files once Desk Wheel is your default app (it can set that up for you).
 - **Convert by dropping:** images (PNG, JPG, WebP, AVIF, HEIC, ICO, TIFF, GIF), video and audio (MP4, WebM, GIF, MP3, M4A, WAV, FLAC), PDF pages to images or text, Word, Excel and PowerPoint to PDF, archives and subtitles.
 - **Screenshots with mark-up:** area, window or full screen, then pen, arrows, boxes, highlights, text, numbered steps, blur and redact, right where you captured. Copy, save, pin it on screen or open it in the editor.
 - **Editor with Beautify:** crop and annotate any image, and put screenshots on a colourful background, ready for posts and slides.
@@ -46,13 +47,13 @@ Drag a file onto the orange button at the edge of your screen and drop it on wha
 - **Searchable PDFs (OCR):** scanned PDFs get their words as invisible text, so they can be searched and copied while looking the same. English and Arabic, on your computer.
 - **PDF tools:** merge, split, keep, reorder or delete pages, rotate, page numbers, watermark, compress, grey and flattened copies, pull out the pictures, remove hidden details, and add or remove passwords (AES-256).
 - **Picture tools:** resize, compress, square crop, flip, black and white, watermark (Arabic too), combine into a row, column or grid, remove photo location data (EXIF), cut out backgrounds (Mac), app icon and website favicon sets, and copy as Base64.
-- **Media player:** every format with subtitles, speed, equalizer, A-B repeat and playlists. Its engine (VLC by VideoLAN, 31–48 MB) downloads only when you first play something and say yes.
+- **Media player:** every format with subtitles, speed, equalizer, A-B repeat and playlists. Its engine (VLC by VideoLAN, 31–48 MB) downloads only when you first play something and say yes. Open the player on its own from the Screenshot wheel or tray and drop or paste files on it.
 - **Disk space:** a list and ring chart of what's taking up space, with Largest files; open, show, rename, ZIP or move items to the Trash / Recycle Bin, or collect them from several folders and remove them together.
 - **Video and audio editing:** trim to the second, join clips, speed up or slow down (voices keep their pitch), rotate, flip, 720p and 1080p copies, a thumbnail sheet of 16 frames, and subtitles added as a track or burned into the picture (Arabic too).
 - **Archives, like WinRAR:** open RAR, 7z, ZIP, TAR, TAR.GZ / BZ2 / XZ, GZ, BZ2, XZ and ISO, password-protected ones too; make ZIP (optionally with an AES-256 password) and TAR.GZ. Harmful archives that try to write outside their folder are refused.
 - **File and text tools:** SHA-256 and MD5 checksums, word counts, join text or CSV files, CSV to JSON, remove hidden details from Word, Excel and PowerPoint files, and bulk rename with undo.
 - **Watched folders:** files arriving in a folder are converted automatically, for example every image to WebP.
-- **Picture viewer:** Next and Back through every picture in a folder with the arrow keys, zoom, full screen, and *Open with › Desk Wheel* in File Explorer.
+- **Picture viewer:** Next and Back through every picture in a folder with the arrow keys, zoom, full screen, and *Open With › Desk Wheel* in Finder and File Explorer.
 - **Markdown and JSON readers:** `.md` files as a clean, GitHub-style page; `.json` files as a coloured, foldable, searchable tree, plus Format, Minify and JSON → CSV.
 - **Safe by design:** originals are never changed or overwritten, and nothing leaves your computer.
 - **Light and dark themes** that follow your system, and **signed automatic updates**.
@@ -67,7 +68,7 @@ Drag a file onto the orange button at the edge of your screen and drop it on wha
 | **macOS 12 or later**, Apple silicon | [Disk image (`…-mac-arm64.dmg`)](https://github.com/irfanaslam-io/desk-wheel/releases/latest) | Open it and drag Desk Wheel to Applications |
 
 - **Windows installer:** it isn't code-signed yet, so Windows may show a SmartScreen warning (*More info › Run anyway*) or Smart App Control may block it. The Microsoft Store version has no warnings.
-- **Mac:** the first time, macOS says it can't check Desk Wheel. Open *System Settings › Privacy & Security* and click *Open Anyway*. You only do this once.
+- **Mac:** the first time, macOS says it can't check Desk Wheel. Open *System Settings › Privacy & Security* and click *Open Anyway*. You only do this once: updates install from inside the app, and every version is signed with the same certificate, so macOS keeps Desk Wheel's permissions.
 - Nothing else to install: the video and audio engine (FFmpeg) is included. For Office files, Desk Wheel uses Microsoft Office if you have it, or the free LibreOffice.
 
 Every release lists the SHA-256 of each file so you can check your download.
@@ -76,9 +77,10 @@ Every release lists the SHA-256 of each file so you can check your download.
 
 1. **Install and open Desk Wheel.** An orange button appears at the right edge of your screen, and an orange ring in the menu bar (Mac) or system tray (Windows).
 2. **Drag a file onto the button.** The wheel opens around it. Keep dragging onto what you want, such as **JPG**, and let go. A card in the corner says when it's done; click it to show the result.
-3. **Or click the button.** The **Screenshot** wheel opens: Area, Window, Full, Scroll (scrolling screenshot), Text, Clipboard, Record and more. Click the **centre** to step through **Screenshot → Convert → Tools → Actions**; Convert, Tools and Actions work on the files selected in File Explorer or Finder.
-4. **Select a folder** to work on every file inside it, for example all its photos to WebP.
-5. **Right-click a segment** to pin it to the front of its wheel, and **drag the button** to move it anywhere.
+3. **Drop a picture, video, PDF or archive** and the first segment opens it: **View**, **Play** or **Open**. Desk Wheel also offers to become the default app for these files, so double-clicking them works too.
+4. **Or click the button.** The **Screenshot** wheel opens: Area, Window, Full, Scroll (scrolling screenshot), Text, Clipboard, Record and more. Click the **centre** to step through **Screenshot → Convert → Tools → Actions**; Convert, Tools and Actions work on the files selected in File Explorer or Finder.
+5. **Select a folder** to work on every file inside it, for example all its photos to WebP.
+6. **Right-click a segment** to pin it to the front of its wheel, and **drag the button** to move it anywhere.
 
 The [user guide](docs/USER-GUIDE.md) covers every tool in detail.
 
@@ -99,8 +101,8 @@ The [user guide](docs/USER-GUIDE.md) covers every tool in detail.
 
 | Wheel | What's on it |
 | --- | --- |
-| **Screenshot** | Area, Window, Full, Scroll, Text, Clipboard, Record, then **More ›** for GIF, Colour, Ruler, QR, Make QR, 5 s and 10 s timers, Files, History, Disk and Settings |
-| **Convert** | Images: PNG, JPG, WebP, HEIC (Mac), AVIF, ICO, TIFF, GIF, BMP · PDF → PNG, JPG, TXT · Video: MP4, WebM, MKV, MOV, GIF, MP3, M4A · Audio: MP3, M4A, WAV, FLAC, OGG, Opus · Office: PDF, DOCX, XLSX, PPTX, CSV · RAR, 7z, ZIP, TAR.*, ISO → Extract, ZIP, TAR.GZ · CSV → JSON · SRT ↔ VTT · Markdown: Read, HTML · JSON: View, Format, Minify, CSV, HTML |
+| **Screenshot** | (**Update** first, when a new version is ready) Area, Window, Full, Scroll, Text, Clipboard, Record, then **More ›** for GIF, Colour, Ruler, QR, Make QR, 5 s and 10 s timers, Files, History, Player, Disk and Settings |
+| **Convert** | View, Play or Open first · Images: PNG, JPG, WebP, HEIC (Mac), AVIF, ICO, TIFF, GIF, BMP · PDF → PNG, JPG, TXT · Video: MP4, WebM, MKV, MOV, GIF, MP3, M4A · Audio: MP3, M4A, WAV, FLAC, OGG, Opus · Office: PDF, DOCX, XLSX, PPTX, CSV · RAR, 7z, ZIP, TAR.*, ISO → Extract, ZIP, TAR.GZ · CSV → JSON · SRT ↔ VTT · Markdown: Read, HTML · JSON: View, Format, Minify, CSV, HTML |
 | **Tools** | Images: Compress, 50%, Size…, Rotate, No EXIF, View, Edit, Square, Flip, Grey, Watermark…, Text, Cut out, Icons, Favicon, PDF · several images: Row, Column, Grid · PDF: Merge, Pages…, Delete…, Rotate, Compress, Searchable, Watermark…, Lock, Unlock, Split, Numbers, Images, Grey, Flatten, Clean · Video: Trim…, Compress, 50%, Mute, Frame, Join, Speed…, Rotate, Flip, 720p, 1080p, Sheet, Subtitles, Burn in · Audio: Trim…, Join, Speed…, Normalize, Mono, Compress · Rename, ZIP |
 | **Actions** | Copy files, Copy image, Copy path, Copy name, Open terminal here, Reveal, Copy to Desktop, Checksum, Base64 (pictures) |
 
@@ -114,7 +116,7 @@ Only the choices that fit the files you're dragging are shown. Wheels with more 
 
 ## Updates
 
-Desk Wheel checks for a new version at most twice a day and asks before installing. Updates install over the current version: nothing to uninstall, and your settings, history and clipboard are kept. Every update is signed, and Desk Wheel refuses one that isn't. The Microsoft Store version is updated by the Store. To check now, choose *Check for updates…* in the menu.
+Desk Wheel checks for a new version when it starts and every 6 hours. When one is ready, a green dot appears on the button and **Update** comes first on the Screenshot wheel; one click installs it, with progress in the tray and Settings. Updates install over the current version: nothing to uninstall, and your settings, history and clipboard are kept. Every update is signed, and Desk Wheel refuses one that isn't. The Microsoft Store version is updated by the Store. To check now, choose *Check for updates…* in the menu.
 
 ## Documentation
 
