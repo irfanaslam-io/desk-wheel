@@ -154,7 +154,8 @@ internal sealed class App : Application, INotifier, IScreenToolHost
                 OpenDefaultApps();
             }, TimeSpan.FromSeconds(_settings.SeenWelcome ? 20 : 75));
 
-        // Every 30 minutes: send waiting statistics, look for an update (the updater itself checks at most twice a day).
+        // Shortly after starting, then every 30 minutes: send waiting statistics and look for an update (the updater
+        // checks once per start and then every 6 hours).
         async void Housekeeping()
         {
             try
@@ -164,18 +165,36 @@ internal sealed class App : Application, INotifier, IScreenToolHost
             }
             catch (Exception ex) when (ex is System.Net.Http.HttpRequestException or TaskCanceledException or IOException) { Log.Write(ex); }
         }
-        Avalonia.Threading.DispatcherTimer.RunOnce(Housekeeping, TimeSpan.FromSeconds(45));
+        Avalonia.Threading.DispatcherTimer.RunOnce(Housekeeping, TimeSpan.FromSeconds(15));
         _housekeeping = new Avalonia.Threading.DispatcherTimer { Interval = TimeSpan.FromMinutes(30) };
         _housekeeping.Tick += (_, _) => Housekeeping();
         _housekeeping.Start();
     }
 
-    /// <summary>The tray menu's update line: "Check for updates…" or "Install update 0.18.0".</summary>
+    /// <summary>
+    /// Shows a waiting update everywhere it should stay visible: the tray line ("Install update 0.3.0", or the
+    /// download's progress), the tray tooltip, a badge on the button and "Update" first on the Screenshot wheel.
+    /// </summary>
     private void RefreshUpdateItem()
     {
-        if (_updateItem is null || _updater is null) return;
-        _updateItem.Header = _updater.Latest is { Available: true } u ? $"Install update {u.Info!.Version}" : "Check for updates…";
+        if (_updater is null) return;
+        var waiting = _updater.Waiting;
+        _caps = _caps with { UpdateVersion = waiting };
+        _button?.SetUpdateBadge(waiting);
+        if (_updateItem is not null)
+        {
+            _updateItem.Header = _updater.Progress is { } p ? $"Updating Desk Wheel… {p:P0}"
+                : waiting is not null ? $"Install update {waiting}" : "Check for updates…";
+            _updateItem.IsEnabled = !_updater.Installing;
+        }
+        SetBusy(_runningJobs);
     }
+
+    private int _runningJobs;
+
+    /// <summary>The tray tooltip when nothing is running: the idle line, or the update waiting or downloading.</summary>
+    private string RestingTip => _updater?.Progress is { } p ? $"Desk Wheel: updating… {p:P0}"
+        : _updater?.Waiting is { } v ? $"Desk Wheel: update {v} is ready" : IdleTip;
 
     private async Task UpdateFromMenuAsync()
     {
@@ -214,6 +233,7 @@ internal sealed class App : Application, INotifier, IScreenToolHost
     {
         if (_button is not null) return;
         _button = new BubbleWindow();
+        _button.SetUpdateBadge(_updater?.Waiting);
         _button.FilesDraggedIn += centre =>
         {
             if (!_settings.Enabled || _wheel is not null) return;
@@ -648,6 +668,7 @@ internal sealed class App : Application, INotifier, IScreenToolHost
             case "cap.history": OpenHistory(); break;
             case "cap.disk": OpenDisk(null); break;
             case "cap.player": OpenPlayer([]); break;
+            case OptionRegistry.UpdateId: _ = UpdateFromMenuAsync(); break;
             case "cap.clipboard": OpenClipboard(); break;
             case "cap.color": _ = Tools.PickColorAsync(AnyWindow()); break;
             case "cap.qr": _ = Tools.ScanQrAsync(); break;
@@ -689,7 +710,7 @@ internal sealed class App : Application, INotifier, IScreenToolHost
         window.Changed += () =>
         {
             ApplySettings();
-            _caps = Capabilities.Detect() with { HasOcr = OcrEngine.IsAvailable, HasVision = OcrEngine.CanRemoveBackground }; // ffmpeg may have been found or removed
+            _caps = Capabilities.Detect() with { HasOcr = OcrEngine.IsAvailable, HasVision = OcrEngine.CanRemoveBackground, UpdateVersion = _updater?.Waiting }; // ffmpeg may have been found or removed
             if (_settings.ShowButton) ShowButton(); else HideButton();
             if (_settings.KeyGesture && !gestureWas) StartKeyGesture();
             gestureWas = _settings.KeyGesture;
@@ -1085,8 +1106,9 @@ internal sealed class App : Application, INotifier, IScreenToolHost
 
     public void SetBusy(int runningJobs)
     {
+        _runningJobs = runningJobs;
         if (_tray is not null)
-            _tray.ToolTipText = runningJobs > 0 ? $"Desk Wheel: {runningJobs} job{(runningJobs == 1 ? "" : "s")} running" : IdleTip;
+            _tray.ToolTipText = runningJobs > 0 ? $"Desk Wheel: {runningJobs} job{(runningJobs == 1 ? "" : "s")} running" : RestingTip;
     }
 
     private void Quit()

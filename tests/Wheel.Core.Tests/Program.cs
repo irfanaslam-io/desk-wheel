@@ -2022,6 +2022,15 @@ Test("file types: one list for every platform, and every type it lists has a win
     Eq("JPG, JPEG, PNG…", groups[0].Examples(3), "label");
 });
 
+Test("an update waiting shows as Update, first on the Screenshot wheel, and only then", () =>
+{
+    True(!Ids(OptionRegistry.GetOptions(WheelMode.Capture, [], caps)).Contains("cap.update"), "nothing waiting: no Update");
+    var waiting = caps with { UpdateVersion = "0.3.0" };
+    var options = OptionRegistry.GetOptions(WheelMode.Capture, [], waiting);
+    Eq("cap.update", options[0].Id, "first");
+    True(options[0].Hint.Contains("0.3.0"), "says which version");
+});
+
 var failed = 0;
 foreach (var (name, body) in tests)
 {

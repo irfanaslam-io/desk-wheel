@@ -47,6 +47,32 @@ jobs:
         with:
           path: engines/ffmpeg
           key: ffmpeg-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/build-ffmpeg.sh') }}
+      - name: Load Desk Wheel's Mac signing identity (keeps permissions across updates; ad-hoc without it)
+        env:
+          MAC_SIGNING_P12: ${{ secrets.MAC_SIGNING_P12 }}
+          MAC_SIGNING_PASSWORD: ${{ secrets.MAC_SIGNING_PASSWORD }}
+        run: |
+          if [ -z "$MAC_SIGNING_P12" ]; then
+            echo "::warning::MAC_SIGNING_P12 isn't set: the Mac app is signed ad hoc, so macOS asks for permissions again after each update."
+            exit 0
+          fi
+          KC="$RUNNER_TEMP/signing.keychain-db"; KCPASS=$(uuidgen)
+          echo "$MAC_SIGNING_P12" | base64 --decode > "$RUNNER_TEMP/signing.p12"
+          security create-keychain -p "$KCPASS" "$KC"
+          security set-keychain-settings -lut 21600 "$KC"
+          security unlock-keychain -p "$KCPASS" "$KC"
+          security import "$RUNNER_TEMP/signing.p12" -k "$KC" -P "$MAC_SIGNING_PASSWORD" -T /usr/bin/codesign -f pkcs12
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KCPASS" "$KC" >/dev/null
+          security list-keychains -d user -s "$KC" $(security list-keychains -d user | tr -d '"')
+          rm -f "$RUNNER_TEMP/signing.p12"
+          # Trust it for code signing on this throwaway runner, so codesign accepts the self-signed certificate.
+          security find-certificate -c "Desk Wheel" -p "$KC" > "$RUNNER_TEMP/signing.pem"
+          sudo security add-trusted-cert -d -r trustRoot -p codeSign -k /Library/Keychains/System.keychain "$RUNNER_TEMP/signing.pem"
+          ID=$(security find-identity -v -p codesigning "$KC" | awk '/Desk Wheel/ {print $2; exit}')
+          test -n "$ID" || { security find-identity -p codesigning "$KC"; echo "The signing identity didn't load"; exit 1; }
+          echo "WHEEL_SIGN_ID=$ID" >> "$GITHUB_ENV"
+          echo "WHEEL_SIGN_SELF=1" >> "$GITHUB_ENV"
+          echo "Signing identity: $ID"
       - name: Build DeskWheel.app and the DMG (builds ffmpeg once, runs core tests on macOS first)
         run: |
           brew install cmake pkg-config nasm

@@ -11,3 +11,7 @@ scripts/icons/build/
 wheel-debug.txt
 .DS_Store
 .cache/
+
+# Mac signing identity: lives only in GitHub secrets
+*.p12
+MAC_SIGNING_*.txt

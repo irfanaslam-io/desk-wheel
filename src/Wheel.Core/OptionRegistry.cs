@@ -225,7 +225,7 @@ public static class OptionRegistry
     public static IEnumerable<WheelOption> All =>
         ByKind.Values.SelectMany(v => v).Concat(Openers.Values).Concat(ByExtension.Select(x => x.Option)).Concat(AnySelectionTools).Concat(ActionOptions).Concat(CaptureOptions);
 
-    public const string MoreId = "nav.more", BackId = "nav.back";
+    public const string MoreId = "nav.more", BackId = "nav.back", UpdateId = "cap.update";
 
     /// <summary>
     /// The first choice for files Desk Wheel can show: open them (picture viewer, player, PDF viewer, archive).
@@ -285,7 +285,12 @@ public static class OptionRegistry
     public static IReadOnlyList<WheelOption> GetOptions(WheelMode mode, IReadOnlyList<string> paths, Capabilities caps)
     {
         if (mode == WheelMode.Capture)
-            return CaptureOptions.Where(caps.Satisfies).ToList();
+        {
+            var capture = CaptureOptions.Where(caps.Satisfies).ToList();
+            if (caps.UpdateVersion is { } version)
+                capture.Insert(0, new WheelOption(UpdateId, "Update", $"Install Desk Wheel {version}: a few seconds, your settings are kept", WheelMode.Capture, EngineKind.Capture));
+            return capture;
+        }
 
         if (paths.Count == 0)
             return Array.Empty<WheelOption>();

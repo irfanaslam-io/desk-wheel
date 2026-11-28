@@ -20,6 +20,13 @@ internal sealed class BubbleWindow : Window
 
     private static readonly IBrush Accent = new SolidColorBrush(Color.FromRgb(0xE8, 0x62, 0x2C));
     private readonly Ellipse _ring;
+    private readonly Ellipse _badge = new()
+    {
+        Width = 12, Height = 12, Fill = new SolidColorBrush(Color.FromRgb(0x2E, 0xA0, 0x43)), Stroke = Brushes.White, StrokeThickness = 2,
+        HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 4, 4, 0),
+        IsHitTestVisible = false, IsVisible = false,
+    };
+    private const string Tip = "Click for screenshots · drop a file to convert it";
     private Point? _pressAt;
 
     /// <summary>A drag carrying files reached the button. Argument: the button's centre in screen pixels.</summary>
@@ -47,7 +54,7 @@ internal sealed class BubbleWindow : Window
         Width = Size;
         Height = Size;
         Title = "Desk Wheel";
-        ToolTip.SetTip(this, "Click for screenshots · drop a file to convert it");
+        ToolTip.SetTip(this, Tip);
 
         _ring = new Ellipse
         {
@@ -67,6 +74,7 @@ internal sealed class BubbleWindow : Window
                 _ring,
                 new Panel { Children = { inner }, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, IsHitTestVisible = false },
                 new Panel { Children = { dot }, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, IsHitTestVisible = false },
+                _badge,
             },
         };
         Opacity = 0.9;
@@ -80,6 +88,13 @@ internal sealed class BubbleWindow : Window
         PointerPressed += OnPressed;
         PointerMoved += OnPointerMoved;
         PointerReleased += OnReleased;
+    }
+
+    /// <summary>A green dot on the button while an update waits; clicking the button shows "Update" first on the wheel.</summary>
+    public void SetUpdateBadge(string? version)
+    {
+        _badge.IsVisible = version is not null;
+        ToolTip.SetTip(this, version is null ? Tip : $"Desk Wheel {version} is ready: click, then Update · drop a file to convert it");
     }
 
     /// <summary>Places the button at a saved position, or on the right edge of the primary screen, vertically centred.</summary>

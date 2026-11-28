@@ -23,9 +23,19 @@ internal sealed class Updater
     private readonly Action<string, string, bool, Action?> _notify;
     private readonly Action _quit;
     private int _busy;
+    private bool _checkedThisLaunch;
+    private string? _announced;
 
     public UpdateCheck? Latest { get; private set; }
     public event Action? Changed;
+
+    /// <summary>The version waiting to be installed, or null when Desk Wheel is up to date.</summary>
+    public string? Waiting => Latest is { Available: true } u ? u.Info!.Version : null;
+
+    /// <summary>While an update downloads: how far it is (0 to 1). Null otherwise.</summary>
+    public double? Progress { get; private set; }
+
+    public bool Installing => Volatile.Read(ref _busy) == 1;
 
     public Updater(AppSettings settings, Action<string, string, bool, Action?> notify, Action quit)
     {
@@ -44,16 +54,21 @@ internal sealed class Updater
         return http;
     }
 
-    /// <summary>Automatic check: at most every 12 hours, only when turned on, quiet unless something's new.</summary>
+    /// <summary>
+    /// Automatic check: once each time Desk Wheel starts, then every 6 hours, only when turned on. A new version
+    /// is announced once (a card); after that it stays visible on the button, the Screenshot wheel and the tray.
+    /// </summary>
     public async Task CheckInBackgroundAsync()
     {
-        if (!Available || !_settings.AutoUpdate) return;
-        if (_settings.LastUpdateCheck is { } last && DateTime.UtcNow - last < TimeSpan.FromHours(12)) return;
+        if (!Available || !_settings.AutoUpdate || Installing) return;
+        if (_checkedThisLaunch && _settings.LastUpdateCheck is { } last && DateTime.UtcNow - last < TimeSpan.FromHours(6)) return;
+        _checkedThisLaunch = true;
         var result = await CheckAsync();
-        if (result is { Available: true } && result.Info!.Version != _settings.SkippedVersion)
-            _notify($"Desk Wheel {result.Info.Version} is available",
-                    result.CanInstall ? "Click to update now. It takes a few seconds and keeps your settings." : "Click to download it.",
-                    false, () => _ = InstallAsync());
+        if (result is not { Available: true } || result.Info!.Version == _settings.SkippedVersion || _announced == result.Info.Version) return;
+        _announced = result.Info.Version;
+        _notify($"Desk Wheel {result.Info.Version} is available",
+                result.CanInstall ? "Click to update now. It takes a few seconds and keeps your settings." : "Click to download it.",
+                false, () => _ = InstallAsync());
     }
 
     public async Task<UpdateCheck> CheckAsync()
@@ -83,7 +98,9 @@ internal sealed class Updater
             var folder = Path.Combine(Path.GetTempPath(), "DeskWheel-update-" + check.Info.Version);
             Directory.CreateDirectory(folder);
             var file = Path.Combine(folder, Path.GetFileName(new Uri(check.Asset!.Url).LocalPath));
-            await DownloadAsync(check.Asset.Url, file);
+            Progress = 0;
+            Changed?.Invoke();
+            await DownloadAsync(check.Asset.Url, file, p => { Progress = p; Changed?.Invoke(); });
             if (!UpdateFeed.Sha256Matches(file, check.Asset.Sha256))
             {
                 File.Delete(file);
@@ -103,19 +120,37 @@ internal sealed class Updater
         }
         finally
         {
+            Progress = null;
             Interlocked.Exchange(ref _busy, 0);
+            Changed?.Invoke();
         }
     }
 
     private const string Brand_Website = Wheel.Core.Brand.Website;
 
-    private static async Task DownloadAsync(string url, string file)
+    /// <summary>Downloads to a file, reporting progress about twice a second.</summary>
+    private static async Task DownloadAsync(string url, string file, Action<double> progress)
     {
         using var response = await Http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
         response.EnsureSuccessStatusCode();
+        var total = response.Content.Headers.ContentLength ?? 0;
         await using var source = await response.Content.ReadAsStreamAsync();
         await using var target = File.Create(file);
-        await source.CopyToAsync(target);
+        var buffer = new byte[1 << 16];
+        long done = 0;
+        var clock = Stopwatch.StartNew();
+        int read;
+        while ((read = await source.ReadAsync(buffer)) > 0)
+        {
+            await target.WriteAsync(buffer.AsMemory(0, read));
+            done += read;
+            if (total > 0 && clock.ElapsedMilliseconds > 400)
+            {
+                clock.Restart();
+                progress(Math.Min(1, (double)done / total));
+            }
+        }
+        progress(1);
     }
 
     private void InstallWindows(string setup, string folder)

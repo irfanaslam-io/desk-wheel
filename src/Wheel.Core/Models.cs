@@ -118,6 +118,9 @@ public sealed record Capabilities(bool HasFfmpeg, bool HasSips = false, bool Has
                                   bool HasVision = false, IReadOnlySet<string>? FfmpegEncoders = null,
                                   IReadOnlySet<Converters.OfficeApp>? MicrosoftOffice = null)
 {
+    /// <summary>A newer Desk Wheel is ready to install (its version), shown as "Update" first on the Screenshot wheel.</summary>
+    public string? UpdateVersion { get; init; }
+
     public bool Satisfies(WheelOption option) =>
         (option.Engine != EngineKind.Ffmpeg || HasFfmpeg) &&
         (option.Engine != EngineKind.Ffmpeg || FfmpegEncoders is null || Converters.FfmpegConverter.CanDo(option.Id, FfmpegEncoders)) &&

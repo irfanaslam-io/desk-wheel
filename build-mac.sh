@@ -103,7 +103,23 @@ $(cat platform/mac/DocumentTypes.plist)
 PLIST
 plutil -lint "$APP/Contents/Info.plist" >/dev/null || { echo "Info.plist is not valid"; exit 1; }
 
-if [[ -n "${WHEEL_SIGN_ID:-}" ]]; then
+if [[ -n "${WHEEL_SIGN_ID:-}" && "${WHEEL_SIGN_SELF:-0}" == "1" ]]; then
+  # Desk Wheel's own free signing identity (a self-signed certificate kept in GitHub secrets). Not trusted by
+  # Gatekeeper, but it stays the same from one version to the next, so macOS keeps Desk Wheel's permissions
+  # (Screen Recording, Accessibility, Files) and in-app updates replace it silently. No hardened runtime:
+  # that only matters for Apple's notarization, which needs the paid programme.
+  echo "Signing with Desk Wheel's own identity: $WHEEL_SIGN_ID"
+  while IFS= read -r -d '' f; do
+    if [[ "$f" != "$APP/Contents/MacOS/DeskWheel" ]] && file -b "$f" | grep -q "Mach-O"; then
+      codesign --force --timestamp=none --sign "$WHEEL_SIGN_ID" "$f"
+    fi
+  done < <(find "$APP/Contents/MacOS" -type f -print0)
+  codesign --force --timestamp=none --sign "$WHEEL_SIGN_ID" "$APP/Contents/MacOS/DeskWheel"
+  codesign --force --timestamp=none --sign "$WHEEL_SIGN_ID" "$APP"
+  codesign --verify --strict --verbose=2 "$APP"
+  echo "Designated requirement (what macOS remembers permissions by):"
+  codesign -d -r- "$APP" 2>&1 | grep designated
+elif [[ -n "${WHEEL_SIGN_ID:-}" ]]; then
   # Developer ID with the hardened runtime: every Mach-O file inside first, then the app.
   echo "Signing with: $WHEEL_SIGN_ID"
   ENT=platform/mac/Wheel.entitlements
@@ -124,7 +140,8 @@ if [[ -n "${WHEEL_SIGN_ID:-}" ]]; then
     rm -f dist/DeskWheel-notarize.zip
   fi
 else
-  # Ad-hoc signature so macOS can remember permissions for this build (fine on your own Mac).
+  # Ad-hoc signature: fine on your own Mac, but it changes with every build, so macOS asks for permissions
+  # again after each update. Release builds use WHEEL_SIGN_SELF (above) instead.
   codesign --force --deep --sign - "$APP"
 fi
 
@@ -160,7 +177,9 @@ TXT
   rm -f "$DMG"
   hdiutil create -volname "Desk Wheel ${VERSION}" -srcfolder "$STAGE" -ov -format UDZO "$DMG" >/dev/null
   rm -rf "$STAGE"
-  if [[ -n "${WHEEL_SIGN_ID:-}" ]]; then
+  if [[ -n "${WHEEL_SIGN_ID:-}" && "${WHEEL_SIGN_SELF:-0}" == "1" ]]; then
+    codesign --force --timestamp=none --sign "$WHEEL_SIGN_ID" "$DMG"
+  elif [[ -n "${WHEEL_SIGN_ID:-}" ]]; then
     codesign --force --timestamp --sign "$WHEEL_SIGN_ID" "$DMG"
     if [[ -n "${WHEEL_NOTARY_PROFILE:-}" ]]; then
       xcrun notarytool submit "$DMG" --keychain-profile "$WHEEL_NOTARY_PROFILE" --wait

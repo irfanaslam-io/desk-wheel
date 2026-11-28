@@ -300,12 +300,29 @@ internal sealed class SettingsWindow : Window
             if (_updater.Latest is { Available: true } u) action.Content = $"Install {u.Info!.Version}";
         };
         if (_updater?.Latest is { Available: true } found) action.Content = $"Install {found.Info!.Version}";
+        var bar = new ProgressBar { Minimum = 0, Maximum = 1, Height = 6, IsVisible = false, Margin = new Thickness(0, 0, 0, 10) };
+        if (_updater is not null)
+        {
+            // Follow the download while this page is open.
+            void Follow() => Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                bar.IsVisible = _updater.Progress is not null;
+                bar.Value = _updater.Progress ?? 0;
+                action.IsEnabled = !_updater.Installing;
+                if (_updater.Progress is { } p) status.Text = $"Downloading version {_updater.Waiting}… {p:P0}";
+                else status.Text = UpdateStatus();
+                if (_updater.Waiting is { } v) action.Content = $"Install {v}";
+            });
+            _updater.Changed += Follow;
+            Closed += (_, _) => _updater.Changed -= Follow;
+        }
         return Stack(
             Group("Desk Wheel " + BuildConfig.Version,
                 Row("Updates", null, action),
+                bar,
                 new Border { Padding = new Thickness(0, 0, 0, 12), Child = status }),
             Group("Automatic",
-                Row("Check for updates automatically", "Twice a day at most. You're always asked before anything is installed.",
+                Row("Check for updates automatically", "When Desk Wheel starts and every 6 hours. Nothing is installed until you click Update.",
                     Toggle(_settings.AutoUpdate, v => _settings.AutoUpdate = v))),
             Ui.Caption("Updates install over the current version: no need to uninstall, and your settings, history and clipboard are kept. Each update is checked against Desk Wheel's signature before it's installed."),
             Group("Optional downloads", MediaPlayerRow()));
