@@ -91,7 +91,7 @@ jobs:
           hdiutil attach dist/*.dmg -nobrowse -mountpoint "$RUNNER_TEMP/dmg"
           "$RUNNER_TEMP/dmg/DeskWheel.app/Contents/MacOS/DeskWheel" --self-test "$RUNNER_TEMP/self-test"
           hdiutil detach "$RUNNER_TEMP/dmg"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: DeskWheel-mac-arm64
           path: dist/*.dmg
@@ -139,11 +139,11 @@ jobs:
         shell: pwsh
         run: ./scripts/self-test-installer.ps1 (Get-Item dist/*-win-x64-setup.exe).FullName
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: DeskWheel-${{ matrix.rid }}
           path: dist/*-setup.exe
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: DeskWheel-${{ matrix.rid }}-store
           path: dist/*.msix
