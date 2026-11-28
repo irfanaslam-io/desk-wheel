@@ -15,7 +15,7 @@ jobs:
   packs:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Build the packs (VideoLAN's LibVLC NuGet packages, pinned by SHA-512; GPL plugins left out)
         run: python3 scripts/make-vlc-packs.py --out packs
       - name: Publish them (once per version)
