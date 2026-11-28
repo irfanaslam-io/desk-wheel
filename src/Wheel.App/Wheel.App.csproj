@@ -29,7 +29,7 @@
     <PackageReference Include="Avalonia.Desktop" Version="11.3.0" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.0" />
     <!-- Text shaping for the editor's Text tool (joined Arabic letters, right-to-left runs). Same 2.88 line as Avalonia's SkiaSharp. -->
-    <PackageReference Include="SkiaSharp.HarfBuzz" Version="2.88.9" />
+    <PackageReference Include="SkiaSharp.HarfBuzz" Version="4.157.0" />
     <!-- Avalonia's Linux-only D-Bus dependency, pinned to the release with the security fix (never used on Mac or Windows). -->
     <PackageReference Include="Tmds.DBus.Protocol" Version="0.21.3" />
   </ItemGroup>
